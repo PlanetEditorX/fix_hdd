@@ -9,6 +9,22 @@ BAD_TRACK_LIST = []
 # 磁盘大小
 FILE_SIZE = 4096 * 256 * 10 # 4KB = 4096 字节, 10MB = 4KB * 256 * 10
 
+def get_files_sorted(directory):
+    """
+    获取指定目录下的所有文件，并按文件名排序。
+    假设文件名是数字。
+    """
+    files = os.listdir(directory)
+    files.sort(key=int)
+    return files
+
+def get_largest_file(directory):
+    """
+    获取指定目录下最大的文件名。
+    """
+    files = get_files_sorted(directory)
+    return files[-1] if files else None
+
 def get_surrounding_paths(base_path: Path, center_name: str, range_size: int = 10):
     """
     获取指定路径前后指定范围内的路径。
@@ -44,6 +60,15 @@ def get_surrounding_paths(base_path: Path, center_name: str, range_size: int = 1
 
     return paths
 
+def is_file_all_ones(file_path):
+    try:
+        with open(file_path, 'r', encoding='utf-8') as file:
+            content = file.read().strip()  # 读取整个文件内容并去除首尾空白字符
+            return content == '1' * len(content)
+    except Exception as e:
+        print(f"读取文件时发生错误：{e}")
+        return False
+
 def check_files(directory):
     """
     遍历指定目录中的所有文件，检查文件大小是否为1MB，
@@ -61,27 +86,22 @@ def check_files(directory):
     # 遍历目录中的所有文件
     for filename in os.listdir(directory):
         file_path = os.path.join(directory, filename)
+
         # 检查文件
         if os.path.isfile(file_path):
             try:
-                # 检查文件大小是否为10MB
-                file_size = os.path.getsize(file_path)
-                if file_size != FILE_SIZE:
-                    raise ValueError(f"文件大小不为 1MB：{file_path}，大小为 {file_size} 字节")
-
                 # 检查文件内容是否全部为数字 '1'
                 with open(file_path, 'r', encoding='utf-8') as file:
                     content = file.read()
-                    if content.strip() != '1' * (file_size // len('1')):
+                    if not content or not is_file_all_ones(file_path):
                         raise ValueError(f"文件内容不正确：{file_path}")
                     else:
-                        print(f"文件读取正常：{file_path}", end='\r')
+                        print(f"文件检测正确：{file_path}", end="\r")
             except Exception as e:
                 print(f"读取文件时发生错误：{file_path}，错误信息：{e}")
                 surrounding_paths = get_surrounding_paths(directory, Path(file_path).name)
                 BAD_TRACK_LIST.extend(surrounding_paths)
-                print(BAD_TRACK_LIST)
-                return
+                print(f"新增错误列表：{surrounding_paths}")
 
 
 def del_right_file(directory):
@@ -97,8 +117,10 @@ def del_right_file(directory):
         # 检查文件
         if os.path.isfile(file_path):
             if not file_path in BAD_TRACK_LIST:
-                os.remove(file_path)
-
+                # os.remove(file_path)
+                print("os.remove({file_path})")
+# 指定要检查的目录
+badblocks_path = "./.BADBLOCKS"
 # 指定要检查的目录
 check_files(badblocks_path)
 # 删除正常扇区文件
