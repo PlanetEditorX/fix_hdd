@@ -35,7 +35,7 @@ def create_4kb_files_until_full(output_dir):
     total, used, free = get_disk_space(disk_path)
     target_size = total
     used_size = target_size - used
-    file_content = '1' * file_size    # 每个文件的内容为全1
+    file_content = '1' * FILE_SIZE    # 每个文件的内容为全1
     file_index = 0                    # 文件编号
 
     # 确保输出目录存在
@@ -51,7 +51,7 @@ def create_4kb_files_until_full(output_dir):
             file.write(file_content)
 
         # 更新总大小
-        total_size += file_size
+        total_size += FILE_SIZE
 
         print(f"剩余空间：{(used_size - total_size)/ (1024 * 1024):.2f} MB, 生成文件 {file_name}, 总大小: {total_size / (1024 * 1024):.2f} MB", end="\r")
 
