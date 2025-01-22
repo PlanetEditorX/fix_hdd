@@ -8,9 +8,10 @@ def get_disk_space(path):
     total, used, free = shutil.disk_usage(path)
     return total, used, free
 
-# 示例：获取根目录（/）的磁盘空间信息
-path = "/"
-total, used, free = get_disk_space(path)
+# 获取当前位置磁盘空间信息
+current_directory = os.getcwd()
+print(f"当前工作目录是：{current_directory}")
+total, used, free = get_disk_space(current_directory)
 print(f"总空间：{total} 字节")
 print(f"已用空间：{used} 字节")
 print(f"剩余空间：{free} 字节")
@@ -92,10 +93,12 @@ def check_files(directory):
                         print(f"文件读取正常：{file_path}", end='\r')
             except Exception as e:
                 print(f"读取文件时发生错误：{file_path}，错误信息：{e}")
-                # 获取前后10个文件的路径
-                start_index = max(0, index - 10)
-                end_index = min(len(all_files), index + 10 + 1)
+                # 获取前后2056个文件（10MB）的路径
+                start_index = max(0, index - 2056)
+                end_index = min(len(all_files), index + 2056 + 1)
                 BAD_TRACK_LIST.extend(all_files[start_index:end_index])
+                print(BAD_TRACK_LIST)
+                return
 
 # 指定要检查的目录
 directory_to_check = "./.PROHIBIT_DELETION"
