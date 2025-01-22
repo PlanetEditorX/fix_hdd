@@ -105,17 +105,9 @@ def check_files(directory):
         print(f"路径不是一个目录：{directory}")
         return
 
-    # 获取目录中所有文件的路径
-    all_files = [os.path.join(directory, filename) for filename in os.listdir(directory)
-        if os.path.isfile(os.path.join(directory, filename))]
-
-    # 按文件名排序（确保顺序一致）
-    all_files.sort()
-
     # 遍历目录中的所有文件
     for filename in os.listdir(directory):
         file_path = os.path.join(directory, filename)
-
         # 检查文件
         if os.path.isfile(file_path):
             try:
@@ -134,13 +126,27 @@ def check_files(directory):
             except Exception as e:
                 print(f"读取文件时发生错误：{file_path}，错误信息：{e}")
                 surrounding_paths = get_surrounding_paths(directory, Path(file_path).name)
-                # 获取前后2056个文件（10MB）的路径
-                # start_index = max(0, index - 2056)
-                # end_index = min(len(all_files), index + 2056 + 1)
-                # BAD_TRACK_LIST.extend(all_files[start_index:end_index])
                 BAD_TRACK_LIST.extend(surrounding_paths)
                 print(BAD_TRACK_LIST)
                 return
 
+
+def del_right_file(directory):
+    """
+    遍历指定目录中的所有文件，删除正常的扇区占用文件
+    """
+    global BAD_TRACK_LIST
+    # 地址去重
+    BAD_TRACK_LIST = list(set(BAD_TRACK_LIST))
+    # 遍历目录中的所有文件
+    for filename in os.listdir(directory):
+        file_path = os.path.join(directory, filename)
+        # 检查文件
+        if os.path.isfile(file_path):
+            if not file_path in BAD_TRACK_LIST:
+                os.remove(file_path)
+
 # 指定要检查的目录
 check_files(badblocks_path)
+# 删除正常扇区文件
+del_right_file(badblocks_path)
