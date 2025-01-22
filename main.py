@@ -39,6 +39,66 @@ def get_largest_file(directory):
     files = get_files_sorted(directory)
     return files[-1] if files else None
 
+
+def get_surrounding_paths(base_path: Path, center_name: str, range_size: int = 10):
+    """
+    获取指定路径前后指定范围内的路径。
+    :param base_path: 基础目录路径
+    :param center_name: 中心文件名（如 '100'）
+    :param range_size: 前后范围大小（默认为 10）
+    :return: 生成的路径列表
+    """
+    try:
+        # 将中心文件名转换为整数
+        center_num = int(center_name)
+    except ValueError:
+        raise ValueError(f"无效的中心文件名：{center_name}，必须是整数")
+
+    # 生成前后范围内的路径
+    start = max(0, center_num - range_size)
+    end = center_num + range_size
+
+    paths = []
+    for num in range(start, end):
+        # 构造路径
+        num_path = os.path.join(base_path, str(num))
+        paths.append(num_path)
+        # path = Path(num_path)
+        # if path.exists():  # 检查路径是否存在
+        #     paths.append(num_path)
+
+    return paths
+
+def is_file_all_ones(file_path):
+    try:
+        with open(file_path, 'r', encoding='utf-8') as file:
+            content = file.read().strip()  # 读取整个文件内容并去除首尾空白字符
+            return content == '1' * len(content)
+    except Exception as e:
+        print(f"读取文件时发生错误：{e}")
+        return False
+
+
+def check_files(file_index, file_path):
+    """
+    检查文件，验证文件内容是否全部为数字 '1'。
+    """
+    global BAD_TRACK_LIST,FILE_SIZE
+
+    # 检查文件
+    if os.path.isfile(file_path):
+        try:
+            # 检查文件内容是否全部为数字 '1'
+            with open(file_path, 'r', encoding='utf-8') as file:
+                content = file.read()
+                if not content or not is_file_all_ones(file_path):
+                    raise ValueError(f"文件内容不正确：{file_path}")
+        except Exception as e:
+            print(f"读取文件时发生错误：{file_path}，错误信息：{e}")
+            surrounding_paths = get_surrounding_paths(directory, Path(file_path).name)
+            BAD_TRACK_LIST.extend(surrounding_paths)
+            print(f"新增错误列表：{surrounding_paths}")
+
 def create_4kb_files_until_full(output_dir):
     """
     循环生成 4KB 的文本文件，直到磁盘空间满。
@@ -78,6 +138,7 @@ def create_4kb_files_until_full(output_dir):
             total_size += FILE_SIZE
 
             print(f"剩余空间：{(used_size - total_size)/ (1024 * 1024):.2f} MB, 生成文件 {file_name}, 总大小: {total_size / (1024 * 1024):.2f} MB", end="\r")
+            check_files(file_index, file_name)
         except Exception as e:
             print("剩余空间不足，进行末尾文件写入")
             total, used, free = get_disk_space(disk_path)
@@ -92,6 +153,7 @@ def create_4kb_files_until_full(output_dir):
 # 指定要检查的目录
 badblocks_path = "./.BADBLOCKS"
 create_4kb_files_until_full(badblocks_path)
+
 
 def get_surrounding_paths(base_path: Path, center_name: str, range_size: int = 10):
     """
@@ -138,7 +200,128 @@ def is_file_all_ones(file_path):
         return False
 
 
-def check_files(directory):
+def check_files(file_index, file_path):
+    """
+    检查文件，验证文件内容是否全部为数字 '1'。
+    """
+    global BAD_TRACK_LIST,FILE_SIZE
+
+    # 检查文件
+    if os.path.isfile(file_path):
+        try:
+            # 检查文件内容是否全部为数字 '1'
+            with open(file_path, 'r', encoding='utf-8') as file:
+                content = file.read()
+                if not content or not is_file_all_ones(file_path):
+                    raise ValueError(f"文件内容不正确：{file_path}")
+        except Exception as e:
+            print(f"读取文件时发生错误：{file_path}，错误信息：{e}")
+            surrounding_paths = get_surrounding_paths(directory, Path(file_path).name)
+            BAD_TRACK_LIST.extend(surrounding_paths)
+            print(f"新增错误列表：{surrounding_paths}")
+
+
+def get_surrounding_paths(base_path: Path, center_name: str, range_size: int = 10):
+    """
+    获取指定路径前后指定范围内的路径。
+    :param base_path: 基础目录路径
+    :param center_name: 中心文件名（如 '100'）
+    :param range_size: 前后范围大小（默认为 10）
+    :return: 生成的路径列表
+    """
+    global TOTAL_INDEX
+    if not TOTAL_INDEX:
+        # 获取最大文件名
+        largest_file = get_largest_file(base_path)
+        if largest_file:
+            TOTAL_INDEX = int(largest_file)
+            print(f"总序号为空，读取到最大文件名：{largest_file}")
+    try:
+        # 将中心文件名转换为整数
+        center_num = int(center_name)
+    except ValueError:
+        raise ValueError(f"无效的中心文件名：{center_name}，必须是整数")
+
+    # 生成前后范围内的路径
+    start = max(0, center_num - range_size)
+    end = min(TOTAL_INDEX, center_num + range_size + 1)
+
+    paths = []
+    for num in range(start, end):
+        # 构造路径
+        num_path = os.path.join(base_path, str(num))
+        path = Path(num_path)
+        if path.exists():  # 检查路径是否存在
+            paths.append(num_path)
+
+    return paths
+
+def is_file_all_ones(file_path):
+    try:
+        with open(file_path, 'r', encoding='utf-8') as file:
+            content = file.read().strip()  # 读取整个文件内容并去除首尾空白字符
+            return content == '1' * len(content)
+    except Exception as e:
+        print(f"读取文件时发生错误：{e}")
+        return False
+
+
+def check_files(file_index, file_path):
+    """
+    检查文件，验证文件内容是否全部为数字 '1'。
+    """
+    global BAD_TRACK_LIST,FILE_SIZE
+
+    # 检查文件
+    if os.path.isfile(file_path):
+        try:
+            # 检查文件内容是否全部为数字 '1'
+            with open(file_path, 'r', encoding='utf-8') as file:
+                content = file.read()
+                if not content or not is_file_all_ones(file_path):
+                    raise ValueError(f"文件内容不正确：{file_path}")
+        except Exception as e:
+            print(f"读取文件时发生错误：{file_path}，错误信息：{e}")
+            surrounding_paths = get_surrounding_paths(directory, Path(file_path).name)
+            BAD_TRACK_LIST.extend(surrounding_paths)
+            print(f"新增错误列表：{surrounding_paths}")
+
+def get_surrounding_paths_all(base_path: Path, center_name: str, range_size: int = 10):
+    """
+    获取指定路径前后指定范围内的路径。
+    :param base_path: 基础目录路径
+    :param center_name: 中心文件名（如 '100'）
+    :param range_size: 前后范围大小（默认为 10）
+    :return: 生成的路径列表
+    """
+    global TOTAL_INDEX
+    if not TOTAL_INDEX:
+        # 获取最大文件名
+        largest_file = get_largest_file(base_path)
+        if largest_file:
+            TOTAL_INDEX = int(largest_file)
+            print(f"总序号为空，读取到最大文件名：{largest_file}")
+    try:
+        # 将中心文件名转换为整数
+        center_num = int(center_name)
+    except ValueError:
+        raise ValueError(f"无效的中心文件名：{center_name}，必须是整数")
+
+    # 生成前后范围内的路径
+    start = max(0, center_num - range_size)
+    end = min(TOTAL_INDEX, center_num + range_size + 1)
+
+    paths = []
+    for num in range(start, end):
+        # 构造路径
+        num_path = os.path.join(base_path, str(num))
+        path = Path(num_path)
+        if path.exists():  # 检查路径是否存在
+            paths.append(num_path)
+
+    return paths
+
+def check_all_files(directory):
     """
     遍历指定目录中的所有文件，验证文件内容是否全部为数字 '1'。
     """
@@ -166,7 +349,7 @@ def check_files(directory):
                         print(f"文件读取正常：{file_path}", end='\r')
             except Exception as e:
                 print(f"读取文件时发生错误：{file_path}，错误信息：{e}")
-                surrounding_paths = get_surrounding_paths(directory, Path(file_path).name)
+                surrounding_paths = get_surrounding_paths_all(directory, Path(file_path).name)
                 BAD_TRACK_LIST.extend(surrounding_paths)
                 print(f"新增错误列表：{surrounding_paths}")
 
@@ -183,10 +366,10 @@ def del_right_file(directory):
         # 检查文件
         if os.path.isfile(file_path):
             if not file_path in BAD_TRACK_LIST:
-                os.remove(file_path)
-                # print(f"os.remove({file_path})")
+                # os.remove(file_path)
+                print(f"os.remove({file_path})")
 
-# 指定要检查的目录
-check_files(badblocks_path)
-# 删除正常扇区文件
-del_right_file(badblocks_path)
+# # 指定要检查的目录
+# check_all_files(badblocks_path)
+# # 删除正常扇区文件
+# del_right_file(badblocks_path)
