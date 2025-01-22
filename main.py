@@ -11,8 +11,8 @@ def get_disk_space(path):
     """
     total, used, free = shutil.disk_usage(path)
     total_mb = total / (1024 * 1024)
-    used_mb = used / (1024 * 1024)
-    free_mb = free / (1024 * 1024)
+    used_mb = format(used / (1024 * 1024), ".2f")
+    free_mb = format(free / (1024 * 1024), ".2f")
     return total_mb, used_mb, free_mb
 
 def create_4kb_files_until_full(output_dir):
@@ -22,7 +22,11 @@ def create_4kb_files_until_full(output_dir):
     """
     file_size = 4096  # 4KB = 4096 字节
     total_size = 0    # 已生成的总大小
-    target_size = 1024 * 1024 * 1024  # 1GB = 1024 * 1024 * 1024 字节
+    # target_size = 1024 * 1024 * 1024  # 1GB = 1024 * 1024 * 1024 字节
+    # 获取当前磁盘空间信息
+    disk_path = os.getcwd()
+    total, used, free = get_disk_space(disk_path)
+    target_size = total * 1024 * 1024 # 转为字节
     file_content = '1' * file_size    # 每个文件的内容
     file_index = 0                    # 文件编号
 
@@ -45,11 +49,11 @@ def create_4kb_files_until_full(output_dir):
         os.sync()
 
         # 获取当前磁盘空间信息
-        total, used, free = get_disk_space(output_dir)
+        total, used, free = get_disk_space(disk_path)
 
         # 清屏并打印多行信息
         os.system("clear")  # Unix 系统清屏命令，Windows 系统使用 "cls"
-        print(f"当前工作目录是：{output_dir}")
+        print(f"当前磁盘挂载目录是：{disk_path}")
         print(f"总空间：{total} MB")
         print(f"已用空间：{used} MB")
         print(f"剩余空间：{free} MB")
