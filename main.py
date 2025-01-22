@@ -139,8 +139,9 @@ def create_4kb_files_until_full(output_dir):
                 file.write(file_content)
             # 更新总大小
             total_size += FILE_SIZE
+            total_per = (total_size / target_size) * 100
             file_enable = check_files(file_index, file_name)
-            print(f"剩余空间：{(used_size - total_size)/ (1024 * 1024):.2f} MB, 生成文件 {file_name}, 总大小: {total_size / (1024 * 1024):.2f} MB，文件是否可读写：{file_enable}", end="\r")
+            print(f"生成文件:{file_name}, 可读写: {file_enable}, 剩余空间: {(used_size - total_size)/ (1024 * 1024):.2f} MB, 总大小: {total_size / (1024 * 1024):.2f} MB, 总进度: {((total_size / target_size) * 100):.2f}%", end="\r")
 
         except Exception as e:
             print("剩余空间不足，进行末尾文件写入")
