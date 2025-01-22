@@ -24,13 +24,16 @@ else:
 BADBLOCKS_PATH = f"{CURRENT_DIRECTORY}/.BADBLOCKS"
 # 日志位置
 LOG_PATH = "/root/badblocks.log"
+# 坏道列表
+BAD_TRACK_LIST_PATH = "/root/badblocks.txt"
 
-CURRENT_DIRECTORY_INPUT = input(f"当前的磁盘挂载目录为：{CURRENT_DIRECTORY}, 生成文件填充路径为：{BADBLOCKS_PATH}, 日志位置为：{LOG_PATH}\r\n是否确认(Y/n): ")
+CURRENT_DIRECTORY_INPUT = input(f"当前的磁盘挂载目录为：{CURRENT_DIRECTORY}, 生成文件填充路径为：{BADBLOCKS_PATH}, 日志位置为：{LOG_PATH}, 坏道列表位置为：{BAD_TRACK_LIST_PATH}\r\n是否确认(Y/n): ")
 while CURRENT_DIRECTORY_INPUT not in ['Y', 'y', '']:
     CURRENT_DIRECTORY = input(f"请输入磁盘挂载目录：")
     BADBLOCKS_PATH = input(f"请输入生成文件填充路径：")
     LOG_PATH = input(f"请输入日志位置：")
-    CURRENT_DIRECTORY_INPUT = input(f"当前的磁盘挂载目录为：{CURRENT_DIRECTORY}, 生成文件填充路径为：{BADBLOCKS_PATH}, 日志位置为：{LOG_PATH}\r\n是否确认(Y/n): ")
+    BAD_TRACK_LIST_PATH = input(f"请输入坏道列表位置：")
+    CURRENT_DIRECTORY_INPUT = input(f"当前的磁盘挂载目录为：{CURRENT_DIRECTORY}, 生成文件填充路径为：{BADBLOCKS_PATH}, 日志位置为：{LOG_PATH}, 坏道列表位置为：{BAD_TRACK_LIST_PATH}\r\n是否确认(Y/n): ")
 
 # 配置日志模块
 logging.basicConfig(
@@ -112,7 +115,7 @@ def check_files(file_index, file_path):
     """
     检查文件，验证文件内容是否全部为数字 '1'。
     """
-    global BAD_TRACK_LIST,FILE_SIZE
+    global BAD_TRACK_LIST,FILE_SIZE,BAD_TRACK_LIST_PATH
 
     # 检查文件
     if os.path.isfile(file_path):
@@ -133,6 +136,9 @@ def check_files(file_index, file_path):
             text_2 = f"新增错误列表：{surrounding_paths}"
             print(text_2)
             logging.warning(text_2)
+            # 写入列表
+            with open(BAD_TRACK_LIST_PATH, 'a', encoding='utf-8') as file:
+                file.write(surrounding_paths)
             return False
 
 def create_4kb_files_until_full(output_dir):
@@ -202,6 +208,13 @@ def del_right_file(directory):
     global BAD_TRACK_LIST
     # 地址去重
     BAD_TRACK_LIST = list(set(BAD_TRACK_LIST))
+    if os.path.isfile(BAD_TRACK_LIST_PATH):
+        temp_list = []
+        # 打开文件并逐行读取
+        with open("BAD_TRACK_LIST_PATH", "r", encoding="utf-8") as file:
+            for line in file:
+                temp_list.append(line.strip())
+        BAD_TRACK_LIST = list(set(BAD_TRACK_LIST.extend(temp_list)))
     # 遍历目录中的所有文件
     for filename in os.listdir(directory):
         file_path = os.path.join(directory, filename)
@@ -216,3 +229,5 @@ def del_right_file(directory):
 
 # # 删除正常扇区文件
 del_right_file(BADBLOCKS_PATH)
+
+# 报os错误，重启
