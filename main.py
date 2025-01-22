@@ -6,6 +6,8 @@ from pathlib import Path
 TOTAL_INDEX = 0
 # 坏道列表
 BAD_TRACK_LIST = []
+# 磁盘大小
+FILE_SIZE = 0
 
 def get_disk_space(path):
     total, used, free = shutil.disk_usage(path)
@@ -15,9 +17,9 @@ def get_disk_space(path):
 current_directory = os.getcwd()
 print(f"当前磁盘挂载目录是：{current_directory}")
 total, used, free = get_disk_space(current_directory)
-print(f"总空间：{total / (1024 * 1024):.2f} MB")
+print(f"总空间：{total / (1024 * 1024 * 1024):.2f} GB")
 print(f"已用空间：{used / (1024 * 1024):.2f} MB")
-print(f"剩余空间：{free / (1024 * 1024):.2f} MB")
+print(f"剩余空间：{free / (1024 * 1024 * 1024):.2f} GB")
 print("注：为降低服务器压力加快生成速度，以上数据仅为初次读取的数据大小，不会实时更新")
 print("==============================================================================")
 def create_4kb_files_until_full(output_dir):
@@ -25,8 +27,8 @@ def create_4kb_files_until_full(output_dir):
     循环生成 4KB 的文本文件，直到磁盘空间满。
     每个文件的内容全是数字 '1'。
     """
-    global TOTAL_INDEX
-    file_size = 4096 * 256 * 10 # 4KB = 4096 字节, 10MB = 4KB * 256 * 10
+    global TOTAL_INDEX, FILE_SIZE
+    FILE_SIZE = 4096 * 256 * 10 # 4KB = 4096 字节, 10MB = 4KB * 256 * 10
     total_size = 0    # 已生成的总大小
     # 获取当前磁盘空间信息
     disk_path = os.getcwd()
@@ -96,7 +98,7 @@ def check_files(directory):
     遍历指定目录中的所有文件，检查文件大小是否为1MB，
     并验证文件内容是否全部为数字 '1'。
     """
-    global BAD_TRACK_LIST
+    global BAD_TRACK_LIST,FILE_SIZE
     if not os.path.exists(directory):
         print(f"目录不存在：{directory}")
         return
@@ -113,7 +115,7 @@ def check_files(directory):
             try:
                 # 检查文件大小是否为10MB
                 file_size = os.path.getsize(file_path)
-                if file_size != 4096 * 256 * 10:
+                if file_size != FILE_SIZE:
                     raise ValueError(f"文件大小不为 1MB：{file_path}，大小为 {file_size} 字节")
 
                 # 检查文件内容是否全部为数字 '1'
