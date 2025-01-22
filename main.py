@@ -1,6 +1,7 @@
 import os
 import shutil
 from pathlib import Path
+import sys
 
 # 总文件数
 TOTAL_INDEX = 0
@@ -14,9 +15,22 @@ def get_disk_space(path):
     return total, used, free
 
 # 获取当前位置磁盘空间信息
-current_directory = os.getcwd()
-print(f"当前磁盘挂载目录是：{current_directory}")
-total, used, free = get_disk_space(current_directory)
+if len(sys.argv) > 1:
+    CURRENT_DIRECTORY = sys.argv[1]
+else:
+    CURRENT_DIRECTORY = os.getcwd()
+
+BADBLOCKS_PATH = f"{CURRENT_DIRECTORY}/.BADBLOCKS"
+
+CURRENT_DIRECTORY_INPUT = input(f"当前的磁盘挂载目录为：{CURRENT_DIRECTORY}，生成文件填充路径为：{BADBLOCKS_PATH}\r\n是否确认(Y/n): ")
+while CURRENT_DIRECTORY_INPUT not in ['Y', 'y', '']:
+    CURRENT_DIRECTORY = input(f"请输入磁盘挂载目录：")
+    BADBLOCKS_PATH = input(f"请输入生成文件填充路径：")
+    CURRENT_DIRECTORY_INPUT = input(f"当前的磁盘挂载目录为：{CURRENT_DIRECTORY}，生成文件填充路径为：{BADBLOCKS_PATH}\r\n是否确认Y/n")
+
+
+print(f"当前磁盘挂载目录是：{CURRENT_DIRECTORY}")
+total, used, free = get_disk_space(CURRENT_DIRECTORY)
 print(f"总空间：{total / (1024 * 1024 * 1024):.2f} GB")
 print(f"已用空间：{used / (1024 * 1024):.2f} MB")
 print(f"剩余空间：{free / (1024 * 1024 * 1024):.2f} GB")
@@ -107,11 +121,11 @@ def create_4kb_files_until_full(output_dir):
     循环生成 4KB 的文本文件，直到磁盘空间满。
     每个文件的内容全是数字 '1'。
     """
-    global TOTAL_INDEX, FILE_SIZE
+    global TOTAL_INDEX, FILE_SIZE, CURRENT_DIRECTORY
     FILE_SIZE = 4096 * 256 * 10 # 4KB = 4096 字节, 10MB = 4KB * 256 * 10
     total_size = 0    # 已生成的总大小
     # 获取当前磁盘空间信息
-    disk_path = os.getcwd()
+    disk_path = CURRENT_DIRECTORY
     total, used, free = get_disk_space(disk_path)
     target_size = total
     used_size = target_size - used
@@ -154,9 +168,7 @@ def create_4kb_files_until_full(output_dir):
     TOTAL_INDEX = file_index
     print("Completed generating files")
 
-# 指定要检查的目录
-badblocks_path = "./.BADBLOCKS"
-create_4kb_files_until_full(badblocks_path)
+create_4kb_files_until_full(BADBLOCKS_PATH)
 
 def del_right_file(directory):
     """
@@ -176,4 +188,4 @@ def del_right_file(directory):
 
 
 # # 删除正常扇区文件
-# del_right_file(badblocks_path)
+# del_right_file(BADBLOCKS_PATH)
