@@ -10,7 +10,7 @@ def get_disk_space(path):
 
 # 获取当前位置磁盘空间信息
 current_directory = os.getcwd()
-print(f"当前工作目录是：{current_directory}")
+print(f"当前磁盘挂载目录是：{current_directory}")
 total, used, free = get_disk_space(current_directory)
 print(f"总空间：{total / (1024 * 1024):.2f} MB")
 print(f"已用空间：{used / (1024 * 1024):.2f} MB")
@@ -22,14 +22,14 @@ def create_4kb_files_until_full(output_dir):
     循环生成 4KB 的文本文件，直到磁盘空间满。
     每个文件的内容全是数字 '1'。
     """
-    file_size = 4096  # 4KB = 4096 字节
+    file_size = 4096 * 256 # 4KB = 4096 字节, 1MB = 4KB * 256
     total_size = 0    # 已生成的总大小
     # 获取当前磁盘空间信息
     disk_path = os.getcwd()
     total, used, free = get_disk_space(disk_path)
     target_size = total
     used_size = target_size - used
-    file_content = '1' * file_size    # 每个文件的内容
+    file_content = '1' * file_size    # 每个文件的内容为全1
     file_index = 0                    # 文件编号
 
     # 确保输出目录存在
@@ -52,8 +52,8 @@ def create_4kb_files_until_full(output_dir):
     print("Completed generating files up to 1GB.")
 
 # 指定要检查的目录
-output_directory = "./.PROHIBIT_DELETION"
-create_4kb_files_until_full(output_directory)
+badblocks_path = "./.BADBLOCKS"
+create_4kb_files_until_full(badblocks_path)
 
 def check_files(directory):
     """
@@ -105,5 +105,4 @@ def check_files(directory):
                 return
 
 # 指定要检查的目录
-directory_to_check = "./.PROHIBIT_DELETION"
-check_files(directory_to_check)
+check_files(badblocks_path)
