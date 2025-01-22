@@ -2,6 +2,7 @@ import os
 import shutil
 from pathlib import Path
 import sys
+import logging
 
 # 总文件数
 TOTAL_INDEX = 0
@@ -19,15 +20,25 @@ if len(sys.argv) > 1:
     CURRENT_DIRECTORY = sys.argv[1]
 else:
     CURRENT_DIRECTORY = os.getcwd()
-
+# 填充位置
 BADBLOCKS_PATH = f"{CURRENT_DIRECTORY}/.BADBLOCKS"
+# 日志位置
+LOG_PATH = "/root/badblocks.log"
 
-CURRENT_DIRECTORY_INPUT = input(f"当前的磁盘挂载目录为：{CURRENT_DIRECTORY}，生成文件填充路径为：{BADBLOCKS_PATH}\r\n是否确认(Y/n): ")
+CURRENT_DIRECTORY_INPUT = input(f"当前的磁盘挂载目录为：{CURRENT_DIRECTORY}, 生成文件填充路径为：{BADBLOCKS_PATH}, 日志位置为：{LOG_PATH}\r\n是否确认(Y/n): ")
 while CURRENT_DIRECTORY_INPUT not in ['Y', 'y', '']:
     CURRENT_DIRECTORY = input(f"请输入磁盘挂载目录：")
     BADBLOCKS_PATH = input(f"请输入生成文件填充路径：")
-    CURRENT_DIRECTORY_INPUT = input(f"当前的磁盘挂载目录为：{CURRENT_DIRECTORY}，生成文件填充路径为：{BADBLOCKS_PATH}\r\n是否确认Y/n")
+    LOG_PATH = input(f"请输入日志位置：")
+    CURRENT_DIRECTORY_INPUT = input(f"当前的磁盘挂载目录为：{CURRENT_DIRECTORY}, 生成文件填充路径为：{BADBLOCKS_PATH}, 日志位置为：{LOG_PATH}\r\n是否确认(Y/n): ")
 
+# 配置日志模块
+logging.basicConfig(
+    level = logging.INFO,  # 设置日志级别为INFO
+    format = '%(asctime)s - %(levelname)s - %(message)s',  # 设置日志格式
+    filename = LOG_PATH,  # 设置日志文件路径
+    filemode = 'a'  # 设置文件模式为追加（'a'）或覆盖（'w'）
+)
 
 print(f"当前磁盘挂载目录是：{CURRENT_DIRECTORY}")
 total, used, free = get_disk_space(CURRENT_DIRECTORY)
@@ -66,7 +77,9 @@ def get_surrounding_paths(base_path: Path, center_name: str, range_size: int = 1
         # 将中心文件名转换为整数
         center_num = int(center_name)
     except ValueError:
-        raise ValueError(f"无效的中心文件名：{center_name}，必须是整数")
+        text = f"无效的中心文件名：{center_name}，必须是整数"
+        logging.error(text)
+        raise ValueError(text)
 
     # 生成前后范围内的路径
     start = max(0, center_num - range_size)
@@ -89,7 +102,9 @@ def is_file_all_ones(file_path):
             content = file.read().strip()  # 读取整个文件内容并去除首尾空白字符
             return content == '1' * len(content)
     except Exception as e:
-        print(f"读取文件时发生错误：{e}")
+        text = f"读取文件时发生错误：{e}"
+        print(text)
+        logging.warning(text)
         return False
 
 
@@ -110,10 +125,14 @@ def check_files(file_index, file_path):
                 else:
                     return True
         except Exception as e:
-            print(f"读取文件时发生错误：{file_path}，错误信息：{e}")
+            text_1 = f"读取文件时发生错误：{file_path}，错误信息：{e}"
+            print(text_1)
+            logging.warning(text_1)
             surrounding_paths = get_surrounding_paths(directory, Path(file_path).name)
             BAD_TRACK_LIST.extend(surrounding_paths)
-            print(f"新增错误列表：{surrounding_paths}")
+            text_2 = f"新增错误列表：{surrounding_paths}"
+            print(text_2)
+            logging.warning(text_2)
             return False
 
 def create_4kb_files_until_full(output_dir):
@@ -138,7 +157,9 @@ def create_4kb_files_until_full(output_dir):
     # 获取最大文件名
     largest_file = get_largest_file(output_dir)
     if largest_file:
-        print(f"读取到运行前存在的最大文件名：{largest_file}")
+        text = f"读取到运行前存在的最大文件名：{largest_file}"
+        print(text)
+        logging.info(text)
         file_index = int(largest_file)
         total_size = file_index * FILE_SIZE
 
@@ -158,7 +179,9 @@ def create_4kb_files_until_full(output_dir):
             print(f"生成文件:{file_name}, 可读写: {file_enable}, 剩余空间: {(used_size - total_size)/ (1024 * 1024):.2f} MB, 总大小: {total_size / (1024 * 1024):.2f} MB, 总进度: {((total_size / target_size) * 100):.2f}%", end="\r")
 
         except Exception as e:
-            print("剩余空间不足，进行末尾文件写入")
+            text = "剩余空间不足，进行末尾文件写入"
+            print(text)
+            logging.info(text)
             total, used, free = get_disk_space(disk_path)
             file_content = '1' * free
             with open(file_name, "w") as file:
@@ -166,7 +189,9 @@ def create_4kb_files_until_full(output_dir):
             print(f"剩余空间：0 MB, 生成文件 {file_name}, 总大小: {total_size / (1024 * 1024):.2f} MB", end="\r")
 
     TOTAL_INDEX = file_index
-    print("Completed generating files")
+    text ="Completed generating files"
+    print(text)
+    logging.info(text)
 
 create_4kb_files_until_full(BADBLOCKS_PATH)
 
@@ -184,8 +209,10 @@ def del_right_file(directory):
         if os.path.isfile(file_path):
             if not file_path in BAD_TRACK_LIST:
                 # os.remove(file_path)
-                print(f"os.remove({file_path})")
+                text = f"os.remove({file_path})"
+                print(text)
+                logging.info(text)
 
 
 # # 删除正常扇区文件
-# del_right_file(BADBLOCKS_PATH)
+del_right_file(BADBLOCKS_PATH)
