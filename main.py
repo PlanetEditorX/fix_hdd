@@ -70,7 +70,7 @@ def get_surrounding_paths(base_path: Path, center_name: str, range_size: int = 1
     """
     global TOTAL_INDEX
     # test/待删除
-    TOTAL_INDEX = 3000
+    # TOTAL_INDEX = 3000
     try:
         # 将中心文件名转换为整数
         center_num = int(center_name)
