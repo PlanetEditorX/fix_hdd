@@ -91,7 +91,7 @@ def create_4kb_files_until_full(output_dir):
 
 # 指定要检查的目录
 badblocks_path = "./.BADBLOCKS"
-# create_4kb_files_until_full(badblocks_path)
+create_4kb_files_until_full(badblocks_path)
 
 def get_surrounding_paths(base_path: Path, center_name: str, range_size: int = 10):
     """
