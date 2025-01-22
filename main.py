@@ -22,6 +22,23 @@ print(f"已用空间：{used / (1024 * 1024):.2f} MB")
 print(f"剩余空间：{free / (1024 * 1024 * 1024):.2f} GB")
 print("注：为降低服务器压力加快生成速度，以上数据仅为初次读取的数据大小，不会实时更新")
 print("==============================================================================")
+
+def get_files_sorted(directory):
+    """
+    获取指定目录下的所有文件，并按文件名排序。
+    假设文件名是数字。
+    """
+    files = os.listdir(directory)
+    files.sort(key=int)
+    return files
+
+def get_largest_file(directory):
+    """
+    获取指定目录下最大的文件名。
+    """
+    files = get_files_sorted(directory)
+    return files[-1] if files else None
+
 def create_4kb_files_until_full(output_dir):
     """
     循环生成 4KB 的文本文件，直到磁盘空间满。
@@ -41,26 +58,40 @@ def create_4kb_files_until_full(output_dir):
     # 确保输出目录存在
     os.makedirs(output_dir, exist_ok=True)
 
+    # 获取最大文件名
+    largest_file = get_largest_file(output_dir)
+    if largest_file:
+        print(f"读取到最大文件名：{largest_file}")
+        file_index = int(largest_file)
+        total_size = file_index * FILE_SIZE
+
     while total_size < target_size:
         # 生成文件名
         file_index += 1
         file_name = os.path.join(output_dir, f"{file_index}")
 
         # 写入文件
-        with open(file_name, "w") as file:
-            file.write(file_content)
+        try:
+            with open(file_name, "w") as file:
+                file.write(file_content)
+            # 更新总大小
+            total_size += FILE_SIZE
 
-        # 更新总大小
-        total_size += FILE_SIZE
-
-        print(f"剩余空间：{(used_size - total_size)/ (1024 * 1024):.2f} MB, 生成文件 {file_name}, 总大小: {total_size / (1024 * 1024):.2f} MB", end="\r")
+            print(f"剩余空间：{(used_size - total_size)/ (1024 * 1024):.2f} MB, 生成文件 {file_name}, 总大小: {total_size / (1024 * 1024):.2f} MB", end="\r")
+        except Exception as e:
+            print("剩余空间不足，进行末尾文件写入")
+            total, used, free = get_disk_space(disk_path)
+            file_content = '1' * free
+            with open(file_name, "w") as file:
+                file.write(file_content)
+            print(f"剩余空间：0 MB, 生成文件 {file_name}, 总大小: {total_size / (1024 * 1024):.2f} MB", end="\r")
 
     TOTAL_INDEX = file_index
     print("Completed generating files")
 
 # 指定要检查的目录
 badblocks_path = "./.BADBLOCKS"
-create_4kb_files_until_full(badblocks_path)
+# create_4kb_files_until_full(badblocks_path)
 
 def get_surrounding_paths(base_path: Path, center_name: str, range_size: int = 10):
     """
@@ -71,8 +102,12 @@ def get_surrounding_paths(base_path: Path, center_name: str, range_size: int = 1
     :return: 生成的路径列表
     """
     global TOTAL_INDEX
-    # test/待删除
-    # TOTAL_INDEX = 3000
+    if not TOTAL_INDEX:
+        # 获取最大文件名
+        largest_file = get_largest_file(base_path)
+        if largest_file:
+            TOTAL_INDEX = int(largest_file)
+            print(f"总序号为空，读取到最大文件名：{largest_file}")
     try:
         # 将中心文件名转换为整数
         center_num = int(center_name)
@@ -93,10 +128,19 @@ def get_surrounding_paths(base_path: Path, center_name: str, range_size: int = 1
 
     return paths
 
+def is_file_all_ones(file_path):
+    try:
+        with open(file_path, 'r', encoding='utf-8') as file:
+            content = file.read().strip()  # 读取整个文件内容并去除首尾空白字符
+            return content == '1' * len(content)
+    except Exception as e:
+        print(f"读取文件时发生错误：{e}")
+        return False
+
+
 def check_files(directory):
     """
-    遍历指定目录中的所有文件，检查文件大小是否为1MB，
-    并验证文件内容是否全部为数字 '1'。
+    遍历指定目录中的所有文件，验证文件内容是否全部为数字 '1'。
     """
     global BAD_TRACK_LIST,FILE_SIZE
     if not os.path.exists(directory):
@@ -113,15 +157,10 @@ def check_files(directory):
         # 检查文件
         if os.path.isfile(file_path):
             try:
-                # 检查文件大小是否为10MB
-                file_size = os.path.getsize(file_path)
-                if file_size != FILE_SIZE:
-                    raise ValueError(f"文件大小不为 1MB：{file_path}，大小为 {file_size} 字节")
-
                 # 检查文件内容是否全部为数字 '1'
                 with open(file_path, 'r', encoding='utf-8') as file:
                     content = file.read()
-                    if content.strip() != '1' * (file_size // len('1')):
+                    if not is_file_all_ones(file_path):
                         raise ValueError(f"文件内容不正确：{file_path}")
                     else:
                         print(f"文件读取正常：{file_path}", end='\r')
@@ -129,9 +168,7 @@ def check_files(directory):
                 print(f"读取文件时发生错误：{file_path}，错误信息：{e}")
                 surrounding_paths = get_surrounding_paths(directory, Path(file_path).name)
                 BAD_TRACK_LIST.extend(surrounding_paths)
-                print(BAD_TRACK_LIST)
-                return
-
+                print(f"新增错误列表：{surrounding_paths}")
 
 def del_right_file(directory):
     """
@@ -147,6 +184,7 @@ def del_right_file(directory):
         if os.path.isfile(file_path):
             if not file_path in BAD_TRACK_LIST:
                 os.remove(file_path)
+                # print(f"os.remove({file_path})")
 
 # 指定要检查的目录
 check_files(badblocks_path)
