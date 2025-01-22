@@ -1,5 +1,6 @@
 import os
 import shutil
+from pathlib import Path
 
 # 总文件数
 TOTAL_INDEX = 0
@@ -57,7 +58,38 @@ def create_4kb_files_until_full(output_dir):
 
 # 指定要检查的目录
 badblocks_path = "./.BADBLOCKS"
-create_4kb_files_until_full(badblocks_path)
+# create_4kb_files_until_full(badblocks_path)
+
+def get_surrounding_paths(base_path: Path, center_name: str, range_size: int = 10):
+    """
+    获取指定路径前后指定范围内的路径。
+    :param base_path: 基础目录路径
+    :param center_name: 中心文件名（如 '100'）
+    :param range_size: 前后范围大小（默认为 10）
+    :return: 生成的路径列表
+    """
+    global TOTAL_INDEX
+    # test/待删除
+    TOTAL_INDEX = 3000
+    try:
+        # 将中心文件名转换为整数
+        center_num = int(center_name)
+    except ValueError:
+        raise ValueError(f"无效的中心文件名：{center_name}，必须是整数")
+
+    # 生成前后范围内的路径
+    start = max(0, center_num - range_size)
+    end = min(TOTAL_INDEX, center_num + range_size + 1)
+
+    paths = []
+    for num in range(start, end):
+        # 构造路径
+        num_path = os.path.join(base_path, str(num))
+        path = Path(num_path)
+        if path.exists():  # 检查路径是否存在
+            paths.append(num_path)
+
+    return paths
 
 def check_files(directory):
     """
@@ -101,11 +133,12 @@ def check_files(directory):
                         print(f"文件读取正常：{file_path}", end='\r')
             except Exception as e:
                 print(f"读取文件时发生错误：{file_path}，错误信息：{e}")
+                surrounding_paths = get_surrounding_paths(directory, Path(file_path).name)
                 # 获取前后2056个文件（10MB）的路径
                 # start_index = max(0, index - 2056)
                 # end_index = min(len(all_files), index + 2056 + 1)
                 # BAD_TRACK_LIST.extend(all_files[start_index:end_index])
-                BAD_TRACK_LIST.append(file_path)
+                BAD_TRACK_LIST.extend(surrounding_paths)
                 print(BAD_TRACK_LIST)
                 return
 
