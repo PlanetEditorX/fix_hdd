@@ -53,7 +53,7 @@ def create_4kb_files_until_full(output_dir):
         print(f"总空间：{total} MB")
         print(f"已用空间：{used} MB")
         print(f"剩余空间：{free} MB")
-        print(f"Generated {file_name}, Total size: {total_size / (1024 * 1024):.2f} MB")
+        print(f"生成文件 {file_name}, 总大小: {total_size / (1024 * 1024):.2f} MB")
 
         # 模拟实时更新
         time.sleep(0.1)
