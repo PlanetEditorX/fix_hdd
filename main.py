@@ -1,6 +1,8 @@
 import os
 import shutil
 
+# 总文件数
+TOTAL_INDEX = 0
 # 坏道列表
 BAD_TRACK_LIST = []
 
@@ -22,6 +24,7 @@ def create_4kb_files_until_full(output_dir):
     循环生成 4KB 的文本文件，直到磁盘空间满。
     每个文件的内容全是数字 '1'。
     """
+    global TOTAL_INDEX
     file_size = 4096 * 256 # 4KB = 4096 字节, 1MB = 4KB * 256
     total_size = 0    # 已生成的总大小
     # 获取当前磁盘空间信息
@@ -49,7 +52,8 @@ def create_4kb_files_until_full(output_dir):
 
         print(f"剩余空间：{(used_size - total_size)/ (1024 * 1024):.2f} MB, 生成文件 {file_name}, 总大小: {total_size / (1024 * 1024):.2f} MB", end="\r")
 
-    print("Completed generating files up to 1GB.")
+    TOTAL_INDEX = file_index
+    print("Completed generating files")
 
 # 指定要检查的目录
 badblocks_path = "./.BADBLOCKS"
@@ -57,9 +61,10 @@ create_4kb_files_until_full(badblocks_path)
 
 def check_files(directory):
     """
-    遍历指定目录中的所有文件，检查文件大小是否为 4KB，
+    遍历指定目录中的所有文件，检查文件大小是否为1MB，
     并验证文件内容是否全部为数字 '1'。
     """
+    global BAD_TRACK_LIST
     if not os.path.exists(directory):
         print(f"目录不存在：{directory}")
         return
@@ -81,26 +86,26 @@ def check_files(directory):
 
         # 检查文件
         if os.path.isfile(file_path):
-            # 检查文件大小是否为 4KB
-            file_size = os.path.getsize(file_path)
-            if file_size != 4096:
-                print(f"文件大小不为 4KB：{file_path}，大小为 {file_size} 字节")
-                continue
-
-            # 检查文件内容是否全部为数字 '1'
             try:
+                # 检查文件大小是否为1MB
+                file_size = os.path.getsize(file_path)
+                if file_size != 4096 * 256:
+                    raise ValueError(f"文件大小不为 1MB：{file_path}，大小为 {file_size} 字节")
+
+                # 检查文件内容是否全部为数字 '1'
                 with open(file_path, 'r', encoding='utf-8') as file:
                     content = file.read()
                     if content.strip() != '1' * (file_size // len('1')):
-                        print(f"文件内容不正确：{file_path}")
+                        raise ValueError(f"文件内容不正确：{file_path}")
                     else:
                         print(f"文件读取正常：{file_path}", end='\r')
             except Exception as e:
                 print(f"读取文件时发生错误：{file_path}，错误信息：{e}")
                 # 获取前后2056个文件（10MB）的路径
-                start_index = max(0, index - 2056)
-                end_index = min(len(all_files), index + 2056 + 1)
-                BAD_TRACK_LIST.extend(all_files[start_index:end_index])
+                # start_index = max(0, index - 2056)
+                # end_index = min(len(all_files), index + 2056 + 1)
+                # BAD_TRACK_LIST.extend(all_files[start_index:end_index])
+                BAD_TRACK_LIST.append(file_path)
                 print(BAD_TRACK_LIST)
                 return
 
