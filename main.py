@@ -26,7 +26,7 @@ def create_4kb_files_until_full(output_dir):
     每个文件的内容全是数字 '1'。
     """
     global TOTAL_INDEX
-    file_size = 4096 * 256 # 4KB = 4096 字节, 1MB = 4KB * 256
+    file_size = 4096 * 256 * 10 # 4KB = 4096 字节, 10MB = 4KB * 256 * 10
     total_size = 0    # 已生成的总大小
     # 获取当前磁盘空间信息
     disk_path = os.getcwd()
@@ -111,9 +111,9 @@ def check_files(directory):
         # 检查文件
         if os.path.isfile(file_path):
             try:
-                # 检查文件大小是否为1MB
+                # 检查文件大小是否为10MB
                 file_size = os.path.getsize(file_path)
-                if file_size != 4096 * 256:
+                if file_size != 4096 * 256 * 10:
                     raise ValueError(f"文件大小不为 1MB：{file_path}，大小为 {file_size} 字节")
 
                 # 检查文件内容是否全部为数字 '1'
