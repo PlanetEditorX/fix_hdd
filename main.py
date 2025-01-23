@@ -52,14 +52,14 @@ if config.getboolean('DEFAULT','INIT'):
         BADBLOCKS_PATH = config['DEFAULT']['BADBLOCKS_PATH']
         LOG_PATH = config['DEFAULT']['LOG_PATH']
         BAD_TRACK_LIST_PATH = config['DEFAULT']['BAD_TRACK_LIST_PATH']
-
+        THREADING_SUM = int(config['DEFAULT']['THREADING_SUM'])
 CURRENT_DIRECTORY_INPUT = input(f"当前的磁盘挂载目录为：{CURRENT_DIRECTORY}, 生成文件填充路径为：{BADBLOCKS_PATH}, 日志位置为：{LOG_PATH}, 坏道列表位置为：{BAD_TRACK_LIST_PATH}, 线程数量为：{THREADING_SUM}\r\n是否确认(Y/n): ")
 while CURRENT_DIRECTORY_INPUT not in ['Y', 'y', '']:
     CURRENT_DIRECTORY = input(f"请输入磁盘挂载目录（默认值：{CURRENT_DIRECTORY}）：") or CURRENT_DIRECTORY
     BADBLOCKS_PATH = input(f"请输入生成文件填充路径（默认值：{BADBLOCKS_PATH}）：") or BADBLOCKS_PATH
     LOG_PATH = input(f"请输入日志位置（默认值：{LOG_PATH}）：") or LOG_PATH
     BAD_TRACK_LIST_PATH = input(f"请输入坏道列表位置（默认值：{BAD_TRACK_LIST_PATH}）：") or BAD_TRACK_LIST_PATH
-    THREADING_SUM = input(f"请输入线程数量（默认值：{THREADING_SUM}）：") or THREADING_SUM
+    THREADING_SUM = int(input(f"请输入线程数量（默认值：{THREADING_SUM}）：") or THREADING_SUM)
     CURRENT_DIRECTORY_INPUT = input(f"当前的磁盘挂载目录为：{CURRENT_DIRECTORY}, 生成文件填充路径为：{BADBLOCKS_PATH}, 日志位置为：{LOG_PATH}, 坏道列表位置为：{BAD_TRACK_LIST_PATH}, 线程数量为：{THREADING_SUM}\r\n是否确认(Y/n): ")
 
 # 写入配置文件
@@ -182,7 +182,7 @@ def write_to_file(thread_id, filename, content):
     try:
         with open(filename, "w", encoding="utf-8") as file:
             file.write(content)
-        print(f"Thread {thread_id} finished writing to {filename}")
+        logging.info(f"Thread {thread_id} finished writing to {filename}")
     except Exception as e:
         text = "写入异常"
         print(text)
@@ -295,8 +295,5 @@ def del_right_file(directory):
                 print(text)
                 logging.info(text)
 
-
 # # 删除正常扇区文件
 del_right_file(BADBLOCKS_PATH)
-
-# 报os错误，重启
