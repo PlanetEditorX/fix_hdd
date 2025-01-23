@@ -190,9 +190,14 @@ def create_4kb_files_until_full(output_dir):
             logging.info(text)
             total, used, free = get_disk_space(disk_path)
             file_content = '1' * free
-            with open(file_name, "w") as file:
-                file.write(file_content)
-            print(f"剩余空间：0 MB, 生成文件 {file_name}, 总大小: {total_size / (1024 * 1024):.2f} MB", end="\r")
+            try:
+                with open(file_name, "w") as file:
+                    file.write(file_content)
+                print(f"剩余空间：0 MB, 生成文件 {file_name}, 总大小: {total_size / (1024 * 1024):.2f} MB", end="\r")
+            except Exception as e:
+                text = "磁盘IO异常，请手动重启服务器"
+                print(text)
+                logging.error(text)
 
     TOTAL_INDEX = file_index
     text ="Completed generating files"
