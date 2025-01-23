@@ -3,6 +3,7 @@ import shutil
 from pathlib import Path
 import sys
 import logging
+import threading
 
 # 总文件数
 TOTAL_INDEX = 0
@@ -141,6 +142,16 @@ def check_files(file_index, file_path):
                 file.write(surrounding_paths)
             return False
 
+def write_to_file(thread_id, filename, content):
+    try:
+        with open(filename, "w", encoding="utf-8") as file:
+            file.write(content)
+        print(f"Thread {thread_id} finished writing to {filename}")
+    except Exception as e:
+        text = "写入异常"
+        print(text)
+        logging.error(text)
+
 def create_4kb_files_until_full(output_dir):
     """
     循环生成 4KB 的文本文件，直到磁盘空间满。
@@ -176,13 +187,30 @@ def create_4kb_files_until_full(output_dir):
 
         # 写入文件
         try:
+            threads = []
+            for i in range(5):  # 创建5个线程
+                file_name = os.path.join(output_dir, f"{file_index + i}")
+                thread = threading.Thread(target=write_to_file, args=(i, file_name, file_content))
+                threads.append(thread)
+                thread.start()
+
+            # 等待所有线程完成
+            for thread in threads:
+                thread.join()
+                # 更新总大小
+                total_size += FILE_SIZE
+                total_per = (total_size / target_size) * 100
+                file_enable = check_files(file_index, file_name)
+                print(f"生成文件:{file_name}, 可读写: {file_enable}, 剩余空间: {(used_size - total_size)/ (1024 * 1024):.2f} MB, 总大小: {total_size / (1024 * 1024):.2f} MB, 总进度: {((total_size / target_size) * 100):.2f}%", end="\r")
+                # 生成文件名
+                file_index += 1
+                file_name = os.path.join(output_dir, f"{file_index}")
+
+            print("All threads finished.")
+
             with open(file_name, "w") as file:
                 file.write(file_content)
-            # 更新总大小
-            total_size += FILE_SIZE
-            total_per = (total_size / target_size) * 100
-            file_enable = check_files(file_index, file_name)
-            print(f"生成文件:{file_name}, 可读写: {file_enable}, 剩余空间: {(used_size - total_size)/ (1024 * 1024):.2f} MB, 总大小: {total_size / (1024 * 1024):.2f} MB, 总进度: {((total_size / target_size) * 100):.2f}%", end="\r")
+
 
         except Exception as e:
             text = "剩余空间不足，进行末尾文件写入"
