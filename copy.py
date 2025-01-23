@@ -63,8 +63,11 @@ if config.getboolean('DEFAULT','INIT'):
         TEMPLATE_PATH = config['DEFAULT']['TEMPLATE_PATH']
 
 CURRENT_DIRECTORY_INPUT = input(f"当前的磁盘挂载目录为：{CURRENT_DIRECTORY}, 生成文件填充路径为：{BADBLOCKS_PATH}, 日志位置为：{LOG_PATH}, 坏道列表位置为：{BAD_TRACK_LIST_PATH}, 线程数量为：{THREADING_SUM}, 模板文件位置为：{TEMPLATE_PATH}\r\n是否确认(Y/n): ")
-while CURRENT_DIRECTORY_INPUT not in ['Y', 'y', '']:
-    CURRENT_DIRECTORY = input(f"请输入磁盘挂载目录（默认值：{CURRENT_DIRECTORY}）：") or CURRENT_DIRECTORY
+while CURRENT_DIRECTORY_INPUT not in ['Y', 'y', ''] or CURRENT_DIRECTORY in ['/root', '/', '']:
+    if  CURRENT_DIRECTORY in ['/root', '/', '']:
+        CURRENT_DIRECTORY = input(f"磁盘挂载目录不能为'/root','/','', 请重新输入：") or CURRENT_DIRECTORY
+    else:
+        CURRENT_DIRECTORY = input(f"请输入磁盘挂载目录（默认值：{CURRENT_DIRECTORY}）：") or CURRENT_DIRECTORY
     BADBLOCKS_PATH = f"{CURRENT_DIRECTORY}/.BADBLOCKS"
     BADBLOCKS_PATH = input(f"请输入生成文件填充路径（默认值：{BADBLOCKS_PATH}）：") or BADBLOCKS_PATH
     LOG_PATH = input(f"请输入日志位置（默认值：{LOG_PATH}）：") or LOG_PATH
