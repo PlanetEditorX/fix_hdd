@@ -170,6 +170,9 @@ def is_file_all_ones(file_path):
         return False
 
 def copy_to_file(thread_id, source_file, file_name):
+    """
+    多线程调用，复制文件进行填充
+    """
     try:
         shutil.copy(source_file, file_name)  # 复制文件并重命名
         logging.info(f"Thread {thread_id} finished writing to {file_name}")
@@ -200,10 +203,20 @@ def create_4kb_files_until_full(output_dir):
     # 获取最大文件名
     largest_file = get_largest_file(output_dir)
     if largest_file:
-        text = f"读取到运行前存在的最大文件名：{largest_file}"
+        text = f"读取到再次运行前存在的最大文件名：{largest_file}"
         print(text)
         logging.info(text)
-        file_index = int(largest_file)
+        file_index = max(0, int(largest_file)-10)
+
+        text = f"回退10项，将从{file_index}重新开始填充文件"
+        print(text)
+        logging.info(text)
+        for i in range(0, 10):
+            file_path = os.path.join(output_dir, f"{file_index + i}")
+            if os.path.exists(file_path):
+                os.remove(file_path)
+                print(f"删除: {file_path}", end="\r")
+        total, used, free = get_disk_space(disk_path)
         total_size = used
 
     if not os.path.isfile(TEMPLATE_PATH):
@@ -217,8 +230,8 @@ def create_4kb_files_until_full(output_dir):
         try:
             threads = []
             for i in range(THREADING_SUM):  # 创建线程
-                file_name = os.path.join(output_dir, f"{file_index + i}")
-                thread = threading.Thread(target=copy_to_file, args=(i, TEMPLATE_PATH, file_name))
+                file_path = os.path.join(output_dir, f"{file_index + i}")
+                thread = threading.Thread(target=copy_to_file, args=(i, TEMPLATE_PATH, file_path))
                 threads.append(thread)
                 thread.start()
 
@@ -228,10 +241,10 @@ def create_4kb_files_until_full(output_dir):
                 # 更新总大小
                 total_size += FILE_SIZE
                 total_per = (total_size / target_size) * 100
-                print(f"生成文件:{file_name}, 剩余空间: {DECIMAL_CONVERSION(used_size - total_size)}, 总大小: {DECIMAL_CONVERSION(total_size)} 总进度: {((total_size / target_size) * 100):.2f}%", end="\r")
+                print(f"生成文件:{file_path}, 剩余空间: {DECIMAL_CONVERSION(used_size - total_size)}, 总大小: {DECIMAL_CONVERSION(total_size)} 总进度: {((total_size / target_size) * 100):.2f}%", end="\r")
                 # 生成文件名
                 file_index += 1
-                file_name = os.path.join(output_dir, f"{file_index}")
+                file_path = os.path.join(output_dir, f"{file_index}")
 
             # 循环多加一个序号
             file_index -= 1
