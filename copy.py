@@ -84,11 +84,21 @@ logging.basicConfig(
     filemode = 'a'  # 设置文件模式为追加（'a'）或覆盖（'w'）
 )
 
+def DECIMAL_CONVERSION(num):
+    if num < 1024:
+        return f"{num} Byte"
+    elif num < 1024 * 1024:
+        return f"{num / (1024):.2f} KB"
+    elif num < 1024 * 1024 * 1024:
+        return f"{num / (1024 * 1024):.2f} MB"
+    elif num < 1024 * 1024 * 1024 * 1024:
+        return f"{num / (1024 * 1024 * 1024):.2f} GB"
+
 print(f"当前磁盘挂载目录是：{CURRENT_DIRECTORY}")
 total, used, free = get_disk_space(CURRENT_DIRECTORY)
-print(f"总空间：{total / (1024 * 1024 * 1024):.2f} GB")
-print(f"已用空间：{used / (1024 * 1024):.2f} MB")
-print(f"剩余空间：{free / (1024 * 1024 * 1024):.2f} GB")
+print(f"总空间：{DECIMAL_CONVERSION(total)}")
+print(f"已用空间：{DECIMAL_CONVERSION(used)}")
+print(f"剩余空间：{DECIMAL_CONVERSION(free)}")
 print("注：为降低服务器压力加快生成速度，以上数据仅为初次读取的数据大小，不会实时更新")
 print("==============================================================================")
 
@@ -127,16 +137,15 @@ def get_surrounding_paths(base_path: Path, center_name: str, range_size: int = 1
 
     # 生成前后范围内的路径
     start = max(0, center_num - range_size)
-    end = center_num + range_size
+    end = center_num + range_size + 1
 
     paths = []
     for num in range(start, end):
         # 构造路径
         num_path = os.path.join(base_path, str(num))
-        paths.append(num_path)
-        # path = Path(num_path)
-        # if path.exists():  # 检查路径是否存在
-        #     paths.append(num_path)
+        path = Path(num_path)
+        if path.exists():  # 检查路径是否存在
+            paths.append(num_path)
 
     return paths
 
@@ -152,35 +161,7 @@ def is_file_all_ones(file_path):
         return False
 
 
-def check_files(file_path):
-    """
-    检查文件，验证文件内容是否全部为数字 '1'。
-    """
-    global BAD_TRACK_LIST,FILE_SIZE,BAD_TRACK_LIST_PATH
 
-    # 检查文件
-    if os.path.isfile(file_path):
-        try:
-            # 检查文件内容是否全部为数字 '1'
-            with open(file_path, 'r', encoding='utf-8') as file:
-                content = file.read()
-                if not content or not is_file_all_ones(file_path):
-                    raise ValueError(f"文件内容不正确：{file_path}")
-                else:
-                    return True
-        except Exception as e:
-            text_1 = f"读取文件时发生错误：{file_path}，错误信息：{e}"
-            print(text_1)
-            logging.warning(text_1)
-            surrounding_paths = get_surrounding_paths(directory, Path(file_path).name)
-            BAD_TRACK_LIST.extend(surrounding_paths)
-            text_2 = f"新增错误列表：{surrounding_paths}"
-            print(text_2)
-            logging.warning(text_2)
-            # 写入列表
-            with open(BAD_TRACK_LIST_PATH, 'a', encoding='utf-8') as file:
-                file.write(surrounding_paths)
-            return False
 
 def write_to_file(thread_id, source_file, file_name):
     try:
@@ -217,9 +198,9 @@ def create_4kb_files_until_full(output_dir):
         print(text)
         logging.info(text)
         file_index = int(largest_file)
-        total_size = file_index * FILE_SIZE
+        total_size = used
 
-    source_file = os.path.join(output_dir, str(file_index))
+    source_file = os.path.join(output_dir, "0")
     if not os.path.isfile(source_file):
         with open(source_file, "w", encoding="utf-8") as file:
             file.write(file_content)
@@ -242,8 +223,7 @@ def create_4kb_files_until_full(output_dir):
                 # 更新总大小
                 total_size += FILE_SIZE
                 total_per = (total_size / target_size) * 100
-                file_enable = check_files(os.path.join(output_dir, str(file_index)))
-                print(f"生成文件:{file_name}, 可读写: {file_enable}, 剩余空间: {(used_size - total_size)/ (1024 * 1024):.2f} MB, 总大小: {total_size / (1024 * 1024):.2f} MB, 总进度: {((total_size / target_size) * 100):.2f}%", end="\r")
+                print(f"生成文件:{file_name}, 剩余空间: {DECIMAL_CONVERSION(used_size - total_size)}, 总大小: {DECIMAL_CONVERSION(total_size)} 总进度: {((total_size / target_size) * 100):.2f}%", end="\r")
                 # 生成文件名
                 file_index += 1
                 file_name = os.path.join(output_dir, f"{file_index}")
@@ -290,10 +270,47 @@ def del_right_file(directory):
         # 检查文件
         if os.path.isfile(file_path):
             if not file_path in BAD_TRACK_LIST:
-                # os.remove(file_path)
-                text = f"os.remove({file_path})"
-                print(text)
-                logging.info(text)
+                os.remove(file_path)
+                print(f"删除正常文件：{file_path}", end="\r")
+                logging.info(f"os.remove({file_path})")
 
-# # 删除正常扇区文件
+def check_files(directory):
+    """
+    遍历指定目录中的所有文件，检查文件大小是否为1MB，
+    并验证文件内容是否全部为数字 '1'。
+    """
+    global BAD_TRACK_LIST,FILE_SIZE
+    if not os.path.exists(directory):
+        print(f"目录不存在：{directory}")
+        return
+
+    if not os.path.isdir(directory):
+        print(f"路径不是一个目录：{directory}")
+        return
+
+    # 遍历目录中的所有文件
+    for filename in os.listdir(directory):
+        file_path = os.path.join(directory, filename)
+
+        # 检查文件
+        if os.path.isfile(file_path):
+            try:
+                # 检查文件内容是否全部为数字 '1'
+                with open(file_path, 'r', encoding='utf-8') as file:
+                    content = file.read()
+                    if not content or not is_file_all_ones(file_path):
+                        print(f"文件检测：{file_path} ERROR", end="\r")
+                        raise ValueError(f"文件内容不正确：{file_path}")
+                    else:
+                        print(f"文件检测：{file_path} OK", end="\r")
+            except Exception as e:
+                print(f"读取文件时发生错误：{file_path}，错误信息：{e}")
+                surrounding_paths = get_surrounding_paths(directory, Path(file_path).name)
+                BAD_TRACK_LIST.extend(surrounding_paths)
+                print(f"新增错误列表：{surrounding_paths}")
+
+# 指定要检查的目录
+check_files(BADBLOCKS_PATH)
+
+# 删除正常扇区文件
 del_right_file(BADBLOCKS_PATH)
