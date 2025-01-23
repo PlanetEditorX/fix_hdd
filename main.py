@@ -4,6 +4,12 @@ from pathlib import Path
 import sys
 import logging
 import threading
+import configparser
+
+# 创建ConfigParser对象
+config = configparser.ConfigParser()
+# 读取配置文件
+config.read("config.ini")
 
 # 总文件数
 TOTAL_INDEX = 0
@@ -28,13 +34,30 @@ LOG_PATH = "/root/badblocks.log"
 # 坏道列表
 BAD_TRACK_LIST_PATH = "/root/badblocks.txt"
 
+if config.getboolean('DEFAULT','INIT'):
+    GET_CONFIG = input(f"获取到配置文件，是否从配置中读取(Y/n)：")
+    if GET_CONFIG in ['Y', 'y', '']:
+        CURRENT_DIRECTORY = config['DEFAULT']['CURRENT_DIRECTORY']
+        BADBLOCKS_PATH = config['DEFAULT']['BADBLOCKS_PATH']
+        LOG_PATH = config['DEFAULT']['LOG_PATH']
+        BAD_TRACK_LIST_PATH = config['DEFAULT']['BAD_TRACK_LIST_PATH']
+
 CURRENT_DIRECTORY_INPUT = input(f"当前的磁盘挂载目录为：{CURRENT_DIRECTORY}, 生成文件填充路径为：{BADBLOCKS_PATH}, 日志位置为：{LOG_PATH}, 坏道列表位置为：{BAD_TRACK_LIST_PATH}\r\n是否确认(Y/n): ")
 while CURRENT_DIRECTORY_INPUT not in ['Y', 'y', '']:
-    CURRENT_DIRECTORY = input(f"请输入磁盘挂载目录：")
-    BADBLOCKS_PATH = input(f"请输入生成文件填充路径：")
-    LOG_PATH = input(f"请输入日志位置：")
-    BAD_TRACK_LIST_PATH = input(f"请输入坏道列表位置：")
+    CURRENT_DIRECTORY = input(f"请输入磁盘挂载目录（默认值：{CURRENT_DIRECTORY}）：") or CURRENT_DIRECTORY
+    BADBLOCKS_PATH = input(f"请输入生成文件填充路径（默认值：{BADBLOCKS_PATH}）：") or BADBLOCKS_PATH
+    LOG_PATH = input(f"请输入日志位置（默认值：{LOG_PATH}）：") or LOG_PATH
+    BAD_TRACK_LIST_PATH = input(f"请输入坏道列表位置（默认值：{BAD_TRACK_LIST_PATH}）：") or BAD_TRACK_LIST_PATH
     CURRENT_DIRECTORY_INPUT = input(f"当前的磁盘挂载目录为：{CURRENT_DIRECTORY}, 生成文件填充路径为：{BADBLOCKS_PATH}, 日志位置为：{LOG_PATH}, 坏道列表位置为：{BAD_TRACK_LIST_PATH}\r\n是否确认(Y/n): ")
+
+# 写入配置文件
+config['DEFAULT']['CURRENT_DIRECTORY'] = CURRENT_DIRECTORY
+config['DEFAULT']['BADBLOCKS_PATH'] = BADBLOCKS_PATH
+config['DEFAULT']['LOG_PATH'] = LOG_PATH
+config['DEFAULT']['BAD_TRACK_LIST_PATH'] = BAD_TRACK_LIST_PATH
+config['DEFAULT']['INIT'] = 'true'
+with open("config.ini", "w") as configfile:
+    config.write(configfile)
 
 # 配置日志模块
 logging.basicConfig(
