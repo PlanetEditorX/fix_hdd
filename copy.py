@@ -5,10 +5,10 @@ import sys
 import logging
 import threading
 import configparser
+###################
+# 通过复制填充磁盘 #
+###################
 
-###################
-# 通过写入填充磁盘 #
-###################
 
 # 创建ConfigParser对象
 config = configparser.ConfigParser()
@@ -182,13 +182,21 @@ def check_files(file_path):
                 file.write(surrounding_paths)
             return False
 
-def write_to_file(thread_id, filename, content):
+# def write_to_file(thread_id, filename, content):
+#     try:
+#         with open(filename, "w", encoding="utf-8") as file:
+#             file.write(content)
+#         logging.info(f"Thread {thread_id} finished writing to {filename}")
+#     except Exception as e:
+#         text = "写入异常"
+#         print(text)
+#         logging.error(text)
+def write_to_file(thread_id, source_file, file_name):
     try:
-        with open(filename, "w", encoding="utf-8") as file:
-            file.write(content)
-        logging.info(f"Thread {thread_id} finished writing to {filename}")
+        shutil.copy(source_file, file_name)  # 复制文件并重命名
+        logging.info(f"Thread {thread_id} finished writing to {file_name}")
     except Exception as e:
-        text = "写入异常"
+        text = f"写入异常: {e}"
         print(text)
         logging.error(text)
 
@@ -220,6 +228,11 @@ def create_4kb_files_until_full(output_dir):
         file_index = int(largest_file)
         total_size = file_index * FILE_SIZE
 
+    source_file = os.path.join(output_dir, str(file_index))
+    if not os.path.isfile(source_file):
+        with open(source_file, "w", encoding="utf-8") as file:
+            file.write(file_content)
+
     while total_size < target_size:
         # 生成文件名
         file_index += 1
@@ -228,9 +241,10 @@ def create_4kb_files_until_full(output_dir):
             threads = []
             for i in range(THREADING_SUM):  # 创建线程
                 file_name = os.path.join(output_dir, f"{file_index + i}")
-                thread = threading.Thread(target=write_to_file, args=(i, file_name, file_content))
+                thread = threading.Thread(target=write_to_file, args=(i, source_file, file_name))
                 threads.append(thread)
                 thread.start()
+
 
             # 等待所有线程完成
             for thread in threads:
