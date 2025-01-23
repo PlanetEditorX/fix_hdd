@@ -182,15 +182,6 @@ def check_files(file_path):
                 file.write(surrounding_paths)
             return False
 
-# def write_to_file(thread_id, filename, content):
-#     try:
-#         with open(filename, "w", encoding="utf-8") as file:
-#             file.write(content)
-#         logging.info(f"Thread {thread_id} finished writing to {filename}")
-#     except Exception as e:
-#         text = "写入异常"
-#         print(text)
-#         logging.error(text)
 def write_to_file(thread_id, source_file, file_name):
     try:
         shutil.copy(source_file, file_name)  # 复制文件并重命名
@@ -245,7 +236,6 @@ def create_4kb_files_until_full(output_dir):
                 threads.append(thread)
                 thread.start()
 
-
             # 等待所有线程完成
             for thread in threads:
                 thread.join()
@@ -268,14 +258,6 @@ def create_4kb_files_until_full(output_dir):
                 total, used, free = get_disk_space(disk_path)
                 if FILE_SIZE < free:
                     raise OSError("错误：磁盘IO异常，请手动重启服务器或插拔磁盘")
-                file_content = '1' * free
-                try:
-                    with open(file_name, "w") as file:
-                        file.write(file_content)
-                    print(f"剩余空间：0 MB, 生成文件 {file_name}, 总大小: {total_size / (1024 * 1024):.2f} MB", end="\r")
-                except Exception as e:
-                    print(e)
-                    logging.error(e)
             else:
                 print(f"发生错误：{e}")
         except Exception as e:
