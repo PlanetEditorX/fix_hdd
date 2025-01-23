@@ -5,6 +5,7 @@ import sys
 import logging
 import threading
 import configparser
+import time
 ###################
 # 通过复制填充磁盘 #
 ###################
@@ -184,6 +185,18 @@ def copy_to_file(thread_id, source_file, file_name):
         print(text)
         logging.error(text)
 
+def format_seconds(seconds):
+    """
+    计算小时、分钟和秒
+    """
+    hours, remainder = divmod(seconds, 3600)  # 3600 秒 = 1 小时
+    minutes, seconds = divmod(remainder, 60)  # 60 秒 = 1 分钟
+    if hours:
+        return f"{int(hours):02d}H:{int(minutes):02d}M:{int(seconds):02d}S"
+    elif minutes:
+        return f"{int(minutes):02d}M:{int(seconds):02d}S"
+    return f"{int(seconds):02d}S"
+
 def create_4kb_files_until_full(output_dir):
     """
     循环生成 4KB 的文本文件，直到磁盘空间满。
@@ -225,8 +238,10 @@ def create_4kb_files_until_full(output_dir):
     if not os.path.isfile(TEMPLATE_PATH):
         with open(TEMPLATE_PATH, "w", encoding="utf-8") as file:
             file.write(file_content)
-
+    speed_time = 0
+    speed_text = '计算中...'
     while total_size < target_size:
+        start_time = time.time()
         # 生成文件名
         file_index += 1
         # 写入文件
@@ -244,13 +259,19 @@ def create_4kb_files_until_full(output_dir):
                 # 更新总大小
                 total_size += FILE_SIZE
                 total_per = (total_size / target_size) * 100
-                print(f"生成文件:{file_path}, 剩余空间: {DECIMAL_CONVERSION(total - total_size)}, 总大小: {DECIMAL_CONVERSION(total_size)} 总进度: {((total_size / target_size) * 100):.2f}%", end="\r")
+                if speed_time:
+                    # (剩余空间 / 线程生成文件大小) * 线程耗时
+                    speed_text = format_seconds((total - total_size) / (THREADING_SUM * FILE_SIZE) * float(speed_time))
+                print(f"生成文件:{file_path}, 剩余空间: {DECIMAL_CONVERSION(total - total_size)}, 总大小: {DECIMAL_CONVERSION(total_size)} 总进度: {((total_size / target_size) * 100):.2f}%, 剩余时间:{speed_text}", end="\r")
                 # 生成文件名
                 file_index += 1
                 file_path = os.path.join(output_dir, f"{file_index}")
 
             # 循环多加一个序号
             file_index -= 1
+            end_time = time.time()
+            speed_time = f"{end_time - start_time:.2f}"
+
         except OSError as e:
             if e.errno == 28:  # errno.ENOSPC: No space left on device
                 text = "错误：磁盘空间不足，无法完成写入操作。"
