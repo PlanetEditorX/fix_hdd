@@ -244,7 +244,7 @@ def create_4kb_files_until_full(output_dir):
                 # 更新总大小
                 total_size += FILE_SIZE
                 total_per = (total_size / target_size) * 100
-                print(f"生成文件:{file_path}, 剩余空间: {DECIMAL_CONVERSION(used_size - total_size)}, 总大小: {DECIMAL_CONVERSION(total_size)} 总进度: {((total_size / target_size) * 100):.2f}%", end="\r")
+                print(f"生成文件:{file_path}, 剩余空间: {DECIMAL_CONVERSION(total - total_size)}, 总大小: {DECIMAL_CONVERSION(total_size)} 总进度: {((total_size / target_size) * 100):.2f}%", end="\r")
                 # 生成文件名
                 file_index += 1
                 file_path = os.path.join(output_dir, f"{file_index}")
