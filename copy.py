@@ -203,7 +203,7 @@ def create_4kb_files_until_full(output_dir):
     # 获取最大文件名
     largest_file = get_largest_file(output_dir)
     if largest_file:
-        text = f"读取到再次运行前存在的最大文件名：{largest_file}"
+        text = f"读取到当前目录下存在的最大文件名：{largest_file}"
         print(text)
         logging.info(text)
         file_index = max(0, int(largest_file)-10)
