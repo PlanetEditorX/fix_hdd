@@ -6,6 +6,8 @@ import logging
 import threading
 import configparser
 import time
+from collections import deque
+
 ###################
 # 通过复制填充磁盘 #
 ###################
@@ -197,6 +199,31 @@ def format_seconds(seconds):
         return f"{int(minutes):02d}M:{int(seconds):02d}S"
     return f"{int(seconds):02d}S"
 
+class FixedSizeArray:
+    """
+    动态数组
+    """
+    def __init__(self, size=20):
+        self.size = size
+        self.array = deque(maxlen=size)  # 创建一个指定长度的双端队列
+
+    def add(self, item):
+        """添加元素，如果已满会自动移除首项"""
+        self.array.append(item)
+
+    def is_full(self):
+        """检查数组是否已满"""
+        return len(self.array) == self.size
+
+    def get_average(self):
+        """计算并返回当前数组的平均值"""
+        if len(self.array) == 0:
+            return 0  # 如果数组为空，返回 0
+        return sum(self.array) / len(self.array)  # 计算平均值
+
+    def __str__(self):
+        return str(list(self.array))  # 返回数组的字符串表示
+
 def create_4kb_files_until_full(output_dir):
     """
     循环生成 4KB 的文本文件，直到磁盘空间满。
@@ -238,7 +265,7 @@ def create_4kb_files_until_full(output_dir):
     if not os.path.isfile(TEMPLATE_PATH):
         with open(TEMPLATE_PATH, "w", encoding="utf-8") as file:
             file.write(file_content)
-    speed_time = 0
+    speed_time = FixedSizeArray()
     speed_text = '计算中...'
     while total_size < target_size:
         start_time = time.time()
@@ -259,10 +286,10 @@ def create_4kb_files_until_full(output_dir):
                 # 更新总大小
                 total_size += FILE_SIZE
                 total_per = (total_size / target_size) * 100
-                if speed_time:
+                if speed_time.is_full():
                     # (剩余空间 / 线程生成文件大小) * 线程耗时
-                    speed_text = format_seconds((total - total_size) / (THREADING_SUM * FILE_SIZE) * float(speed_time))
-                print(f"生成文件:{file_path}, 剩余空间: {DECIMAL_CONVERSION(total - total_size)}, 总大小: {DECIMAL_CONVERSION(total_size)} 总进度: {((total_size / target_size) * 100):.2f}%, 剩余时间:{speed_text}", end="\r")
+                    speed_text = format_seconds((total - total_size) / (THREADING_SUM * FILE_SIZE) * float(speed_time.get_average()))
+                print(f"生成文件:{file_path}, 剩余空间: {DECIMAL_CONVERSION(total - total_size)}, 总大小: {DECIMAL_CONVERSION(total_size)} 总进度: {((total_size / target_size) * 100):.2f}%, 预估时间:{speed_text}", end="\r")
                 # 生成文件名
                 file_index += 1
                 file_path = os.path.join(output_dir, f"{file_index}")
@@ -270,7 +297,7 @@ def create_4kb_files_until_full(output_dir):
             # 循环多加一个序号
             file_index -= 1
             end_time = time.time()
-            speed_time = f"{end_time - start_time:.2f}"
+            speed_time.add(float(f"{end_time - start_time:.2f}"))
 
         except OSError as e:
             if e.errno == 28:  # errno.ENOSPC: No space left on device
