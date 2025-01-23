@@ -37,17 +37,20 @@ BADBLOCKS_PATH = f"{CURRENT_DIRECTORY}/.BADBLOCKS"
 LOG_PATH = "/root/badblocks.log"
 # 坏道列表
 BAD_TRACK_LIST_PATH = "/root/badblocks.txt"
+# 模板位置
+TEMPLATE_PATH = f"{CURRENT_DIRECTORY}/.BADBLOCKS/0"
 
 # 读取配置文件
 read_config = config.read("config.ini")
 if not read_config:
     config["DEFAULT"] = {
-        "current_directory": "none",
-        "badblocks_path": "none",
-        "log_path": "none",
-        "bad_track_list_path": "none",
-        "threading_sum": "none",
-        "init": "false"
+        "CURRENT_DIRECTORY": "none",
+        "BADBLOCKS_PATH": "none",
+        "LOG_PATH": "none",
+        "BAD_TRACK_LIST_PATH": "none",
+        "THREADING_SUM": "none",
+        "TEMPLATE_PATH": "none",
+        "INIT": "false"
     }
 if config.getboolean('DEFAULT','INIT'):
     GET_CONFIG = input(f"获取到配置文件，是否从配置中读取(Y/n)：")
@@ -57,14 +60,19 @@ if config.getboolean('DEFAULT','INIT'):
         LOG_PATH = config['DEFAULT']['LOG_PATH']
         BAD_TRACK_LIST_PATH = config['DEFAULT']['BAD_TRACK_LIST_PATH']
         THREADING_SUM = int(config['DEFAULT']['THREADING_SUM'])
-CURRENT_DIRECTORY_INPUT = input(f"当前的磁盘挂载目录为：{CURRENT_DIRECTORY}, 生成文件填充路径为：{BADBLOCKS_PATH}, 日志位置为：{LOG_PATH}, 坏道列表位置为：{BAD_TRACK_LIST_PATH}, 线程数量为：{THREADING_SUM}\r\n是否确认(Y/n): ")
+        TEMPLATE_PATH = config['DEFAULT']['TEMPLATE_PATH']
+
+CURRENT_DIRECTORY_INPUT = input(f"当前的磁盘挂载目录为：{CURRENT_DIRECTORY}, 生成文件填充路径为：{BADBLOCKS_PATH}, 日志位置为：{LOG_PATH}, 坏道列表位置为：{BAD_TRACK_LIST_PATH}, 线程数量为：{THREADING_SUM}, 模板文件位置为：{TEMPLATE_PATH}\r\n是否确认(Y/n): ")
 while CURRENT_DIRECTORY_INPUT not in ['Y', 'y', '']:
     CURRENT_DIRECTORY = input(f"请输入磁盘挂载目录（默认值：{CURRENT_DIRECTORY}）：") or CURRENT_DIRECTORY
+    BADBLOCKS_PATH = f"{CURRENT_DIRECTORY}/.BADBLOCKS"
     BADBLOCKS_PATH = input(f"请输入生成文件填充路径（默认值：{BADBLOCKS_PATH}）：") or BADBLOCKS_PATH
     LOG_PATH = input(f"请输入日志位置（默认值：{LOG_PATH}）：") or LOG_PATH
     BAD_TRACK_LIST_PATH = input(f"请输入坏道列表位置（默认值：{BAD_TRACK_LIST_PATH}）：") or BAD_TRACK_LIST_PATH
     THREADING_SUM = int(input(f"请输入线程数量（默认值：{THREADING_SUM}）：") or THREADING_SUM)
-    CURRENT_DIRECTORY_INPUT = input(f"当前的磁盘挂载目录为：{CURRENT_DIRECTORY}, 生成文件填充路径为：{BADBLOCKS_PATH}, 日志位置为：{LOG_PATH}, 坏道列表位置为：{BAD_TRACK_LIST_PATH}, 线程数量为：{THREADING_SUM}\r\n是否确认(Y/n): ")
+    TEMPLATE_PATH = f"{CURRENT_DIRECTORY}/.BADBLOCKS/0"
+    TEMPLATE_PATH = input(f"请输入模板文件位置（默认值：{TEMPLATE_PATH}）：") or TEMPLATE_PATH
+    CURRENT_DIRECTORY_INPUT = input(f"当前的磁盘挂载目录为：{CURRENT_DIRECTORY}, 生成文件填充路径为：{BADBLOCKS_PATH}, 日志位置为：{LOG_PATH}, 坏道列表位置为：{BAD_TRACK_LIST_PATH}, 线程数量为：{THREADING_SUM}, 模板文件位置为：{TEMPLATE_PATH}\r\n是否确认(Y/n): ")
 
 # 写入配置文件
 config['DEFAULT']['CURRENT_DIRECTORY'] = CURRENT_DIRECTORY
@@ -72,6 +80,7 @@ config['DEFAULT']['BADBLOCKS_PATH'] = BADBLOCKS_PATH
 config['DEFAULT']['LOG_PATH'] = LOG_PATH
 config['DEFAULT']['BAD_TRACK_LIST_PATH'] = BAD_TRACK_LIST_PATH
 config['DEFAULT']['THREADING_SUM'] = str(THREADING_SUM)
+config['DEFAULT']['TEMPLATE_PATH'] = TEMPLATE_PATH
 config['DEFAULT']['INIT'] = 'true'
 with open("config.ini", "w") as configfile:
     config.write(configfile)
@@ -160,10 +169,7 @@ def is_file_all_ones(file_path):
         logging.warning(text)
         return False
 
-
-
-
-def write_to_file(thread_id, source_file, file_name):
+def copy_to_file(thread_id, source_file, file_name):
     try:
         shutil.copy(source_file, file_name)  # 复制文件并重命名
         logging.info(f"Thread {thread_id} finished writing to {file_name}")
@@ -177,7 +183,7 @@ def create_4kb_files_until_full(output_dir):
     循环生成 4KB 的文本文件，直到磁盘空间满。
     每个文件的内容全是数字 '1'。
     """
-    global TOTAL_INDEX, FILE_SIZE, CURRENT_DIRECTORY, THREADING_SUM
+    global TOTAL_INDEX, FILE_SIZE, CURRENT_DIRECTORY, THREADING_SUM, TEMPLATE_PATH
     FILE_SIZE = 4096 * 256 * 10 # 4KB = 4096 字节, 10MB = 4KB * 256 * 10
     total_size = 0    # 已生成的总大小
     # 获取当前磁盘空间信息
@@ -200,9 +206,8 @@ def create_4kb_files_until_full(output_dir):
         file_index = int(largest_file)
         total_size = used
 
-    source_file = os.path.join(output_dir, "0")
-    if not os.path.isfile(source_file):
-        with open(source_file, "w", encoding="utf-8") as file:
+    if not os.path.isfile(TEMPLATE_PATH):
+        with open(TEMPLATE_PATH, "w", encoding="utf-8") as file:
             file.write(file_content)
 
     while total_size < target_size:
@@ -213,7 +218,7 @@ def create_4kb_files_until_full(output_dir):
             threads = []
             for i in range(THREADING_SUM):  # 创建线程
                 file_name = os.path.join(output_dir, f"{file_index + i}")
-                thread = threading.Thread(target=write_to_file, args=(i, source_file, file_name))
+                thread = threading.Thread(target=copy_to_file, args=(i, TEMPLATE_PATH, file_name))
                 threads.append(thread)
                 thread.start()
 
@@ -228,7 +233,7 @@ def create_4kb_files_until_full(output_dir):
                 file_index += 1
                 file_name = os.path.join(output_dir, f"{file_index}")
 
-            # 多加了一个
+            # 循环多加一个序号
             file_index -= 1
         except OSError as e:
             if e.errno == 28:  # errno.ENOSPC: No space left on device
