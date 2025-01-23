@@ -207,15 +207,15 @@ def create_4kb_files_until_full(output_dir):
         print(text)
         logging.info(text)
         file_index = max(0, int(largest_file)-10)
-
-        text = f"回退10项，将从{file_index}重新开始填充文件"
-        print(text)
-        logging.info(text)
-        for i in range(0, 10):
+        back_nums = int(largest_file) - file_index
+        print(f"回退{back_nums}项，将从{file_index}重新开始填充文件(0/{back_nums})", end="\r")
+        for i in range(0, back_nums):
             file_path = os.path.join(output_dir, f"{file_index + i}")
             if os.path.exists(file_path):
                 os.remove(file_path)
-                print(f"删除: {file_path}", end="\r")
+                print(f"回退{back_nums}项，将从{file_index}重新开始填充文件(0/{back_nums})", end="\r")
+        print(f"回退{back_nums}项，将从{file_index}重新开始填充文件({back_nums}/{back_nums}) OK")
+
         total, used, free = get_disk_space(disk_path)
         total_size = used
 
