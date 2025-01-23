@@ -8,8 +8,6 @@ import configparser
 
 # 创建ConfigParser对象
 config = configparser.ConfigParser()
-# 读取配置文件
-config.read("config.ini")
 
 # 总文件数
 TOTAL_INDEX = 0
@@ -36,6 +34,17 @@ LOG_PATH = "/root/badblocks.log"
 # 坏道列表
 BAD_TRACK_LIST_PATH = "/root/badblocks.txt"
 
+# 读取配置文件
+read_config = config.read("config.ini")
+if not read_config:
+    config["DEFAULT"] = {
+        "current_directory": "none",
+        "badblocks_path": "none",
+        "log_path": "none",
+        "bad_track_list_path": "none",
+        "threading_sum": "none",
+        "init": "false"
+    }
 if config.getboolean('DEFAULT','INIT'):
     GET_CONFIG = input(f"获取到配置文件，是否从配置中读取(Y/n)：")
     if GET_CONFIG in ['Y', 'y', '']:
