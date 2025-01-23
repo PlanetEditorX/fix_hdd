@@ -17,6 +17,8 @@ TOTAL_INDEX = 0
 BAD_TRACK_LIST = []
 # 磁盘大小
 FILE_SIZE = 0
+# 线程数量
+THREADING_SUM = 5
 
 def get_disk_space(path):
     total, used, free = shutil.disk_usage(path)
@@ -42,19 +44,21 @@ if config.getboolean('DEFAULT','INIT'):
         LOG_PATH = config['DEFAULT']['LOG_PATH']
         BAD_TRACK_LIST_PATH = config['DEFAULT']['BAD_TRACK_LIST_PATH']
 
-CURRENT_DIRECTORY_INPUT = input(f"当前的磁盘挂载目录为：{CURRENT_DIRECTORY}, 生成文件填充路径为：{BADBLOCKS_PATH}, 日志位置为：{LOG_PATH}, 坏道列表位置为：{BAD_TRACK_LIST_PATH}\r\n是否确认(Y/n): ")
+CURRENT_DIRECTORY_INPUT = input(f"当前的磁盘挂载目录为：{CURRENT_DIRECTORY}, 生成文件填充路径为：{BADBLOCKS_PATH}, 日志位置为：{LOG_PATH}, 坏道列表位置为：{BAD_TRACK_LIST_PATH}, 线程数量为：{THREADING_SUM}\r\n是否确认(Y/n): ")
 while CURRENT_DIRECTORY_INPUT not in ['Y', 'y', '']:
     CURRENT_DIRECTORY = input(f"请输入磁盘挂载目录（默认值：{CURRENT_DIRECTORY}）：") or CURRENT_DIRECTORY
     BADBLOCKS_PATH = input(f"请输入生成文件填充路径（默认值：{BADBLOCKS_PATH}）：") or BADBLOCKS_PATH
     LOG_PATH = input(f"请输入日志位置（默认值：{LOG_PATH}）：") or LOG_PATH
     BAD_TRACK_LIST_PATH = input(f"请输入坏道列表位置（默认值：{BAD_TRACK_LIST_PATH}）：") or BAD_TRACK_LIST_PATH
-    CURRENT_DIRECTORY_INPUT = input(f"当前的磁盘挂载目录为：{CURRENT_DIRECTORY}, 生成文件填充路径为：{BADBLOCKS_PATH}, 日志位置为：{LOG_PATH}, 坏道列表位置为：{BAD_TRACK_LIST_PATH}\r\n是否确认(Y/n): ")
+    THREADING_SUM = input(f"请输入线程数量（默认值：{THREADING_SUM}）：") or THREADING_SUM
+    CURRENT_DIRECTORY_INPUT = input(f"当前的磁盘挂载目录为：{CURRENT_DIRECTORY}, 生成文件填充路径为：{BADBLOCKS_PATH}, 日志位置为：{LOG_PATH}, 坏道列表位置为：{BAD_TRACK_LIST_PATH}, 线程数量为：{THREADING_SUM}\r\n是否确认(Y/n): ")
 
 # 写入配置文件
 config['DEFAULT']['CURRENT_DIRECTORY'] = CURRENT_DIRECTORY
 config['DEFAULT']['BADBLOCKS_PATH'] = BADBLOCKS_PATH
 config['DEFAULT']['LOG_PATH'] = LOG_PATH
 config['DEFAULT']['BAD_TRACK_LIST_PATH'] = BAD_TRACK_LIST_PATH
+config['DEFAULT']['THREADING_SUM'] = str(THREADING_SUM)
 config['DEFAULT']['INIT'] = 'true'
 with open("config.ini", "w") as configfile:
     config.write(configfile)
@@ -135,7 +139,7 @@ def is_file_all_ones(file_path):
         return False
 
 
-def check_files(file_index, file_path):
+def check_files(file_path):
     """
     检查文件，验证文件内容是否全部为数字 '1'。
     """
@@ -180,7 +184,7 @@ def create_4kb_files_until_full(output_dir):
     循环生成 4KB 的文本文件，直到磁盘空间满。
     每个文件的内容全是数字 '1'。
     """
-    global TOTAL_INDEX, FILE_SIZE, CURRENT_DIRECTORY
+    global TOTAL_INDEX, FILE_SIZE, CURRENT_DIRECTORY, THREADING_SUM
     FILE_SIZE = 4096 * 256 * 10 # 4KB = 4096 字节, 10MB = 4KB * 256 * 10
     total_size = 0    # 已生成的总大小
     # 获取当前磁盘空间信息
@@ -206,12 +210,10 @@ def create_4kb_files_until_full(output_dir):
     while total_size < target_size:
         # 生成文件名
         file_index += 1
-        file_name = os.path.join(output_dir, f"{file_index}")
-
         # 写入文件
         try:
             threads = []
-            for i in range(5):  # 创建5个线程
+            for i in range(THREADING_SUM):  # 创建线程
                 file_name = os.path.join(output_dir, f"{file_index + i}")
                 thread = threading.Thread(target=write_to_file, args=(i, file_name, file_content))
                 threads.append(thread)
@@ -223,32 +225,33 @@ def create_4kb_files_until_full(output_dir):
                 # 更新总大小
                 total_size += FILE_SIZE
                 total_per = (total_size / target_size) * 100
-                file_enable = check_files(file_index, file_name)
+                file_enable = check_files(os.path.join(output_dir, str(file_index)))
                 print(f"生成文件:{file_name}, 可读写: {file_enable}, 剩余空间: {(used_size - total_size)/ (1024 * 1024):.2f} MB, 总大小: {total_size / (1024 * 1024):.2f} MB, 总进度: {((total_size / target_size) * 100):.2f}%", end="\r")
                 # 生成文件名
                 file_index += 1
                 file_name = os.path.join(output_dir, f"{file_index}")
 
-            print("All threads finished.")
-
-            with open(file_name, "w") as file:
-                file.write(file_content)
-
-
-        except Exception as e:
-            text = "剩余空间不足，进行末尾文件写入"
-            print(text)
-            logging.info(text)
-            total, used, free = get_disk_space(disk_path)
-            file_content = '1' * free
-            try:
-                with open(file_name, "w") as file:
-                    file.write(file_content)
-                print(f"剩余空间：0 MB, 生成文件 {file_name}, 总大小: {total_size / (1024 * 1024):.2f} MB", end="\r")
-            except Exception as e:
-                text = "磁盘IO异常，请手动重启服务器"
+            # 多加了一个
+            file_index -= 1
+        except OSError as e:
+            if e.errno == 28:  # errno.ENOSPC: No space left on device
+                text = "错误：磁盘空间不足，无法完成写入操作。"
                 print(text)
-                logging.error(text)
+                logging.info(text)
+                total, used, free = get_disk_space(disk_path)
+                file_content = '1' * free
+                try:
+                    with open(file_name, "w") as file:
+                        file.write(file_content)
+                    print(f"剩余空间：0 MB, 生成文件 {file_name}, 总大小: {total_size / (1024 * 1024):.2f} MB", end="\r")
+                except Exception as e:
+                    text = "磁盘IO异常，请手动重启服务器"
+                    print(text)
+                    logging.error(text)
+            else:
+                print(f"发生错误：{e}")
+        except Exception as e:
+            print(f"写入文件发生错误：{e}")
 
     TOTAL_INDEX = file_index
     text ="Completed generating files"
