@@ -134,12 +134,12 @@ def get_largest_file(directory):
     return files[-1] if files else None
 
 
-def get_surrounding_paths(base_path: Path, center_name: str, range_size: int = 10):
+def get_surrounding_paths(base_path: Path, center_name: str, range_size: int = 1):
     """
     获取指定路径前后指定范围内的路径。
     :param base_path: 基础目录路径
     :param center_name: 中心文件名（如 '100'）
-    :param range_size: 前后范围大小（默认为 10）
+    :param range_size: 前后范围大小（默认为 1）
     :return: 生成的路径列表
     """
     try:
@@ -230,7 +230,7 @@ def create_4kb_files_until_full(output_dir):
     每个文件的内容全是数字 '1'。
     """
     global TOTAL_INDEX, FILE_SIZE, CURRENT_DIRECTORY, THREADING_SUM, TEMPLATE_PATH
-    FILE_SIZE = 4096 * 256 * 10 # 4KB = 4096 字节, 10MB = 4KB * 256 * 10
+    FILE_SIZE = 4096 * 256 * 20 # 4KB = 4096 字节, 20MB = 4KB * 256 * 20
     total_size = 0    # 已生成的总大小
     # 获取当前磁盘空间信息
     disk_path = CURRENT_DIRECTORY
@@ -345,8 +345,7 @@ def del_right_file(directory):
 
 def check_files(directory):
     """
-    遍历指定目录中的所有文件，检查文件大小是否为1MB，
-    并验证文件内容是否全部为数字 '1'。
+    遍历指定目录中的所有文件验证文件内容是否全部为数字 '1'。
     """
     global BAD_TRACK_LIST,FILE_SIZE
     if not os.path.exists(directory):
