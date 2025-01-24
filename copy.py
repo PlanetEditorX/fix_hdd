@@ -23,7 +23,7 @@ BAD_TRACK_LIST = []
 # 磁盘大小
 FILE_SIZE = 0
 # 线程数量
-THREADING_SUM = 5
+THREADING_SUM = 1
 
 def get_disk_space(path):
     total, used, free = shutil.disk_usage(path)
@@ -90,6 +90,37 @@ config['DEFAULT']['TEMPLATE_PATH'] = TEMPLATE_PATH
 config['DEFAULT']['INIT'] = 'true'
 with open("config.ini", "w") as configfile:
     config.write(configfile)
+
+print("==============================================================================")
+OPERATION_OPTIONS = False
+IS_CREATE = False
+IS_CHECK = False
+IS_DEL = False
+while OPERATION_OPTIONS not in ['','1','2','3','a','A','b','B']:
+    print("操作列表")
+    print("【1】生成填充文件，占满磁盘空间")
+    print("【2】检查填充文件读取是否正常，生成坏道列表")
+    print("【3】删除正常填充文件，保留坏道占用文件，防止写入")
+    print("【a】执行【1】【2】")
+    print("【b】执行【2】【3】")
+    OPERATION_OPTIONS = input(f"请输入操作（回车默认依次执行）：")
+    match(OPERATION_OPTIONS):
+        case '':
+            IS_CREATE = True
+            IS_CHECK = True
+            IS_DEL = True
+        case '1': IS_CREATE = True
+        case '2': IS_CHECK = True
+        case '3': IS_DEL = True
+        case 'a' | 'A':
+            IS_CREATE = True
+            IS_CHECK = True
+        case 'b' | 'B':
+            IS_CHECK = True
+            IS_DEL = True
+        case _:
+            print(f"输入错误，请重新输入！")
+print("==============================================================================")
 
 # 配置日志模块
 logging.basicConfig(
@@ -317,8 +348,6 @@ def create_4kb_files_until_full(output_dir):
     print(text)
     logging.info(text)
 
-create_4kb_files_until_full(BADBLOCKS_PATH)
-
 def del_right_file(directory):
     """
     遍历指定目录中的所有文件，删除正常的扇区占用文件
@@ -334,14 +363,18 @@ def del_right_file(directory):
                 temp_list.append(line.strip())
         BAD_TRACK_LIST = list(set(BAD_TRACK_LIST.extend(temp_list)))
     # 遍历目录中的所有文件
-    for filename in os.listdir(directory):
-        file_path = os.path.join(directory, filename)
-        # 检查文件
-        if os.path.isfile(file_path):
-            if not file_path in BAD_TRACK_LIST:
-                os.remove(file_path)
-                print(f"删除正常文件：{file_path}", end="\r")
-                logging.info(f"os.remove({file_path})")
+    if os.path.isdir(directory):
+        for filename in os.listdir(directory):
+            file_path = os.path.join(directory, filename)
+            # 检查文件
+            if os.path.isfile(file_path):
+                if not file_path in BAD_TRACK_LIST:
+                    os.remove(file_path)
+                    print(f"删除正常文件：{file_path}", end="\r")
+                    logging.info(f"os.remove({file_path})")
+    else:
+        print(f"'{directory}' 不存在!")
+        sys.exit()
 
 def check_files(directory):
     """
@@ -377,8 +410,29 @@ def check_files(directory):
                 BAD_TRACK_LIST.extend(surrounding_paths)
                 print(f"新增错误列表：{surrounding_paths}")
 
-# 指定要检查的目录
-check_files(BADBLOCKS_PATH)
+if IS_CREATE:
+    text = "=================================生成填充文件================================="
+    print(text)
+    logging.info(text)
+    create_4kb_files_until_full(BADBLOCKS_PATH)
+    text = "=================================生成填充文件 OK=============================="
+    print(text)
+    logging.info(text)
 
-# 删除正常扇区文件
-del_right_file(BADBLOCKS_PATH)
+if IS_CHECK:
+    text = "=================================检查填充文件================================="
+    print(text)
+    logging.info(text)
+    check_files(BADBLOCKS_PATH)
+    text = "=================================检查填充文件 OK=============================="
+    print(text)
+    logging.info(text)
+
+if IS_DEL:
+    text = "=================================删除填充文件================================="
+    print(text)
+    logging.info(text)
+    del_right_file(BADBLOCKS_PATH)
+    text = "=================================删除填充文件 OK=============================="
+    print(text)
+    logging.info(text)
