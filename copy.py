@@ -12,10 +12,6 @@ from collections import deque
 # 通过复制填充磁盘 #
 ###################
 
-
-# 创建ConfigParser对象
-config = configparser.ConfigParser()
-
 # 总文件数
 TOTAL_INDEX = 0
 # 坏道列表
@@ -33,6 +29,8 @@ def get_disk_space(path):
 if len(sys.argv) > 1:
     CURRENT_DIRECTORY = sys.argv[1]
 
+# 创建ConfigParser对象
+config = configparser.ConfigParser()
 # 读取配置文件
 read_config = config.read("config.ini")
 if read_config:
@@ -81,6 +79,8 @@ while CURRENT_DIRECTORY_INPUT not in ['Y', 'y', ''] or CURRENT_DIRECTORY in ['/r
     LOG_PATH = input(f"请输入日志位置（默认值：{LOG_PATH}）：") or LOG_PATH
     BAD_TRACK_LIST_PATH = input(f"请输入坏道列表位置（默认值：{BAD_TRACK_LIST_PATH}）：") or BAD_TRACK_LIST_PATH
     THREADING_SUM = int(input(f"请输入线程数量（默认值：{THREADING_SUM}）：") or THREADING_SUM)
+    while THREADING_SUM < 1 or THREADING_SUM > 10:
+        THREADING_SUM = int(input(f"请重新输入线程数量（当前值：{THREADING_SUM}，范围：1-10）："))
     TEMPLATE_PATH = input(f"请输入模板文件位置（默认值：{TEMPLATE_PATH}）：") or TEMPLATE_PATH
     CURRENT_DIRECTORY_INPUT = input(f"当前的磁盘挂载目录为：{CURRENT_DIRECTORY}, 生成文件填充路径为：{BADBLOCKS_PATH}, 日志位置为：{LOG_PATH}, 坏道列表位置为：{BAD_TRACK_LIST_PATH}, 线程数量为：{THREADING_SUM}, 模板文件位置为：{TEMPLATE_PATH}\r\n是否确认(Y/n): ")
 
