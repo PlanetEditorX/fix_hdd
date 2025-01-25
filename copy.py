@@ -32,19 +32,11 @@ def get_disk_space(path):
 # 获取当前位置磁盘空间信息
 if len(sys.argv) > 1:
     CURRENT_DIRECTORY = sys.argv[1]
-else:
-    CURRENT_DIRECTORY = os.getcwd()
-# 填充位置
-BADBLOCKS_PATH = f"{CURRENT_DIRECTORY}/.BADBLOCKS"
-# 日志位置
-LOG_PATH = "/root/badblocks.log"
-# 坏道列表
-BAD_TRACK_LIST_PATH = "/root/badblocks.txt"
-# 模板位置
-TEMPLATE_PATH = f"{CURRENT_DIRECTORY}/.BADBLOCKS/0"
 
 # 读取配置文件
 read_config = config.read("config.ini")
+if read_config:
+    CURRENT_DIRECTORY = config['DEFAULT']['CURRENT_DIRECTORY']
 if not read_config:
     config["DEFAULT"] = {
         "CURRENT_DIRECTORY": "none",
@@ -55,6 +47,19 @@ if not read_config:
         "TEMPLATE_PATH": "none",
         "INIT": "false"
     }
+    CURRENT_DIRECTORY = input(f"请输入磁盘挂载目录：")
+
+# 填充位置
+BADBLOCKS_PATH = f"{CURRENT_DIRECTORY}/.BADBLOCKS"
+GETCWD = os.getcwd()
+# 日志位置
+LOG_PATH = f"{GETCWD}/badblocks.log"
+# 坏道列表
+BAD_TRACK_LIST_PATH = f"{GETCWD}/badblocks.txt"
+# 模板位置
+TEMPLATE_PATH = f"{CURRENT_DIRECTORY}/.BADBLOCKS/0"
+
+
 if config.getboolean('DEFAULT','INIT'):
     GET_CONFIG = input(f"获取到配置文件，是否从配置中读取(Y/n)：")
     if GET_CONFIG in ['Y', 'y', '']:
@@ -76,7 +81,6 @@ while CURRENT_DIRECTORY_INPUT not in ['Y', 'y', ''] or CURRENT_DIRECTORY in ['/r
     LOG_PATH = input(f"请输入日志位置（默认值：{LOG_PATH}）：") or LOG_PATH
     BAD_TRACK_LIST_PATH = input(f"请输入坏道列表位置（默认值：{BAD_TRACK_LIST_PATH}）：") or BAD_TRACK_LIST_PATH
     THREADING_SUM = int(input(f"请输入线程数量（默认值：{THREADING_SUM}）：") or THREADING_SUM)
-    TEMPLATE_PATH = f"{CURRENT_DIRECTORY}/.BADBLOCKS/0"
     TEMPLATE_PATH = input(f"请输入模板文件位置（默认值：{TEMPLATE_PATH}）：") or TEMPLATE_PATH
     CURRENT_DIRECTORY_INPUT = input(f"当前的磁盘挂载目录为：{CURRENT_DIRECTORY}, 生成文件填充路径为：{BADBLOCKS_PATH}, 日志位置为：{LOG_PATH}, 坏道列表位置为：{BAD_TRACK_LIST_PATH}, 线程数量为：{THREADING_SUM}, 模板文件位置为：{TEMPLATE_PATH}\r\n是否确认(Y/n): ")
 
@@ -90,6 +94,14 @@ config['DEFAULT']['TEMPLATE_PATH'] = TEMPLATE_PATH
 config['DEFAULT']['INIT'] = 'true'
 with open("config.ini", "w") as configfile:
     config.write(configfile)
+
+# 模板文件不在机械硬盘上，创建临时缓存目录
+if TEMPLATE_PATH != f"{CURRENT_DIRECTORY}/.BADBLOCKS/0":
+    TEMPORARY_FILES_PATH = f"{os.path.dirname(TEMPLATE_PATH)}/.template"
+    # 删除临时缓存目录
+    if os.path.exists(TEMPORARY_FILES_PATH):
+        shutil.rmtree(TEMPORARY_FILES_PATH)
+    os.makedirs(TEMPORARY_FILES_PATH, exist_ok=True)
 
 print("==============================================================================")
 OPERATION_OPTIONS = False
@@ -305,25 +317,54 @@ def create_4kb_files_until_full(output_dir):
         # 写入文件
         try:
             threads = []
-            for i in range(THREADING_SUM):  # 创建线程
-                file_path = os.path.join(output_dir, f"{file_index + i}")
-                thread = threading.Thread(target=copy_to_file, args=(i, TEMPLATE_PATH, file_path))
-                threads.append(thread)
-                thread.start()
+            # 先写入到临时目录，再移动到挂载目录
+            if os.path.exists(TEMPORARY_FILES_PATH) and os.path.isdir(TEMPORARY_FILES_PATH):
+                file_path_list = []
+                for i in range(THREADING_SUM):  # 创建线程
+                    file_path = os.path.join(TEMPORARY_FILES_PATH, f"{file_index + i}")
+                    file_path_list.append(file_path)
+                    thread = threading.Thread(target=copy_to_file, args=(i, TEMPLATE_PATH, file_path))
+                    threads.append(thread)
+                    thread.start()
 
-            # 等待所有线程完成
-            for thread in threads:
-                thread.join()
-                # 更新总大小
-                total_size += FILE_SIZE
-                total_per = (total_size / target_size) * 100
-                if speed_time.is_full():
-                    # (剩余空间 / 线程生成文件大小) * 线程耗时
-                    speed_text = format_seconds((total - total_size) / (THREADING_SUM * FILE_SIZE) * float(speed_time.get_average()))
-                print(f"生成文件:{file_path}, 剩余空间: {DECIMAL_CONVERSION(total - total_size)}, 总大小: {DECIMAL_CONVERSION(total_size)} 总进度: {((total_size / target_size) * 100):.2f}%, 预估时间:{speed_text}", end="\r")
-                # 生成文件名
-                file_index += 1
-                file_path = os.path.join(output_dir, f"{file_index}")
+                # 等待所有线程完成
+                for thread in threads:
+                    thread.join()
+                    # 生成文件名
+                    file_index += 1
+                    file_path = os.path.join(output_dir, f"{file_index}")
+                for file_name in file_path_list:
+                    new_file_name = Path(file_name).name
+                    file_path = os.path.join(output_dir, new_file_name)
+                    shutil.move(file_name, file_path)
+                    # 更新总大小
+                    total_size += FILE_SIZE
+                    total_per = (total_size / target_size) * 100
+                    if speed_time.is_full():
+                        # (剩余空间 / 线程生成文件大小) * 线程耗时
+                        speed_text = format_seconds((total - total_size) / (THREADING_SUM * FILE_SIZE) * float(speed_time.get_average()))
+                    print(f"生成文件:{file_path}, 剩余空间: {DECIMAL_CONVERSION(total - total_size)}, 总大小: {DECIMAL_CONVERSION(total_size)} 总进度: {((total_size / target_size) * 100):.2f}%, 预估时间:{speed_text}", end="\r")
+
+            else:
+                for i in range(THREADING_SUM):  # 创建线程
+                    file_path = os.path.join(output_dir, f"{file_index + i}")
+                    thread = threading.Thread(target=copy_to_file, args=(i, TEMPLATE_PATH, file_path))
+                    threads.append(thread)
+                    thread.start()
+
+                # 等待所有线程完成
+                for thread in threads:
+                    thread.join()
+                    # 更新总大小
+                    total_size += FILE_SIZE
+                    total_per = (total_size / target_size) * 100
+                    if speed_time.is_full():
+                        # (剩余空间 / 线程生成文件大小) * 线程耗时
+                        speed_text = format_seconds((total - total_size) / (THREADING_SUM * FILE_SIZE) * float(speed_time.get_average()))
+                    print(f"生成文件:{file_path}, 剩余空间: {DECIMAL_CONVERSION(total - total_size)}, 总大小: {DECIMAL_CONVERSION(total_size)} 总进度: {((total_size / target_size) * 100):.2f}%, 预估时间:{speed_text}", end="\r")
+                    # 生成文件名
+                    file_index += 1
+                    file_path = os.path.join(output_dir, f"{file_index}")
 
             # 循环多加一个序号
             file_index -= 1
