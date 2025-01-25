@@ -33,9 +33,10 @@ if len(sys.argv) > 1:
 config = configparser.ConfigParser()
 # 读取配置文件
 read_config = config.read("config.ini")
-if read_config:
+if read_config and config.sections():
     CURRENT_DIRECTORY = config['DEFAULT']['CURRENT_DIRECTORY']
-if not read_config:
+
+if not read_config or not config.sections():
     config["DEFAULT"] = {
         "CURRENT_DIRECTORY": "none",
         "BADBLOCKS_PATH": "none",
