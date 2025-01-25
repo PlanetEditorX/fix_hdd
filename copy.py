@@ -157,7 +157,7 @@ total, used, free = get_disk_space(CURRENT_DIRECTORY)
 print(f"总空间：{DECIMAL_CONVERSION(total)}")
 print(f"已用空间：{DECIMAL_CONVERSION(used)}")
 print(f"剩余空间：{DECIMAL_CONVERSION(free)}")
-print("注：为降低服务器压力加快生成速度，以上数据仅为初次读取的数据大小，不会实时更新")
+print("注：以上数据仅为初次读取的数据大小")
 print("==============================================================================")
 
 def get_files_sorted(directory):
@@ -246,7 +246,7 @@ class FixedSizeArray:
     """
     动态数组
     """
-    def __init__(self, size=20):
+    def __init__(self, size=10):
         self.size = size
         self.array = deque(maxlen=size)  # 创建一个指定长度的双端队列
 
@@ -263,6 +263,10 @@ class FixedSizeArray:
         if len(self.array) == 0:
             return 0  # 如果数组为空，返回 0
         return sum(self.array) / len(self.array)  # 计算平均值
+
+    def get_sum(self):
+        """计算并返回当前数组的总和"""
+        return sum(self.array)
 
     def __str__(self):
         return str(list(self.array))  # 返回数组的字符串表示
@@ -342,8 +346,8 @@ def create_4kb_files_until_full(output_dir):
                     total_per = (total_size / target_size) * 100
                     if speed_time.is_full():
                         # (剩余空间 / 线程生成文件大小) * 线程耗时
-                        speed_text = format_seconds((total - total_size) / (THREADING_SUM * FILE_SIZE) * float(speed_time.get_average()))
-                    print(f"生成文件:{file_path}, 剩余空间: {DECIMAL_CONVERSION(total - total_size)}, 总大小: {DECIMAL_CONVERSION(total_size)} 总进度: {((total_size / target_size) * 100):.2f}%, 预估时间:{speed_text}", end="\r")
+                        speed_text = format_seconds((total - total_size) / (THREADING_SUM * FILE_SIZE * 10) * float(speed_time.get_sum()))
+                    print(f"生成文件:{file_path}, 剩余空间: {DECIMAL_CONVERSION(total - total_size)}, 已用空间: {DECIMAL_CONVERSION(total_size)} 总进度: {((total_size / target_size) * 100):.2f}%, 预估时间:{speed_text}", end="\r")
 
             else:
                 for i in range(THREADING_SUM):  # 创建线程
@@ -360,8 +364,9 @@ def create_4kb_files_until_full(output_dir):
                     total_per = (total_size / target_size) * 100
                     if speed_time.is_full():
                         # (剩余空间 / 线程生成文件大小) * 线程耗时
-                        speed_text = format_seconds((total - total_size) / (THREADING_SUM * FILE_SIZE) * float(speed_time.get_average()))
-                    print(f"生成文件:{file_path}, 剩余空间: {DECIMAL_CONVERSION(total - total_size)}, 总大小: {DECIMAL_CONVERSION(total_size)} 总进度: {((total_size / target_size) * 100):.2f}%, 预估时间:{speed_text}", end="\r")
+                        speed_text = format_seconds((total - total_size) / (THREADING_SUM * FILE_SIZE * 10) * float(speed_time.get_sum()))
+                        # speed_text = format_seconds((total - total_size) / (THREADING_SUM * FILE_SIZE) * float(speed_time.get_average()))
+                    print(f"生成文件:{file_path}, 剩余空间: {DECIMAL_CONVERSION(total - total_size)}, 已用空间: {DECIMAL_CONVERSION(total_size)} 总进度: {((total_size / target_size) * 100):.2f}%, 预估时间:{speed_text}", end="\r")
                     # 生成文件名
                     file_index += 1
                     file_path = os.path.join(output_dir, f"{file_index}")
