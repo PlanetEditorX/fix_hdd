@@ -491,10 +491,11 @@ def del_right_file(directory):
     if os.path.isfile(BAD_TRACK_LIST_PATH):
         temp_list = []
         # 打开文件并逐行读取
-        with open("BAD_TRACK_LIST_PATH", "r", encoding="utf-8") as file:
+        with open(BAD_TRACK_LIST_PATH, "r", encoding="utf-8") as file:
             for line in file:
                 temp_list.append(line.strip())
-        BAD_TRACK_LIST = list(set(BAD_TRACK_LIST.extend(temp_list)))
+        BAD_TRACK_LIST.extend(temp_list)
+        BAD_TRACK_LIST = list(set(BAD_TRACK_LIST))
     # 遍历目录中的所有文件
     if os.path.isdir(directory):
         for filename in os.listdir(directory):
@@ -503,8 +504,13 @@ def del_right_file(directory):
             if os.path.isfile(file_path):
                 if not file_path in BAD_TRACK_LIST:
                     os.remove(file_path)
-                    print(f"删除正常文件：{file_path}", end="\r")
-                    logging.info(f"os.remove({file_path})")
+                    text = f"删除正常文件：{file_path} OK"
+                    print(text, end='\r')
+                    logging.info(text)
+                else:
+                    text = f"保留坏道文件：{file_path} OK"
+                    print(text, end='\r')
+                    logging.info(text)
     else:
         print(f"'{directory}' 不存在!")
         sys.exit()
