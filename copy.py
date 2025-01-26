@@ -33,10 +33,9 @@ if len(sys.argv) > 1:
 config = configparser.ConfigParser()
 # 读取配置文件
 read_config = config.read("config.ini")
-if read_config and config.sections():
+if read_config and config['DEFAULT']:
     CURRENT_DIRECTORY = config['DEFAULT']['CURRENT_DIRECTORY']
-
-if not read_config or not config.sections():
+else:
     config["DEFAULT"] = {
         "CURRENT_DIRECTORY": "none",
         "BADBLOCKS_PATH": "none",
@@ -315,7 +314,8 @@ def create_4kb_files_until_full(output_dir):
             file.write(file_content)
     speed_time = FixedSizeArray()
     speed_text = '计算中...'
-    while total_size < target_size:
+    DISK_SPACE = True
+    while total_size < target_size and DISK_SPACE:
         start_time = time.time()
         # 生成文件名
         file_index += 1
@@ -385,10 +385,13 @@ def create_4kb_files_until_full(output_dir):
                 total, used, free = get_disk_space(disk_path)
                 if FILE_SIZE < free:
                     raise OSError("错误：磁盘IO异常，请手动重启服务器或插拔磁盘")
+                DISK_SPACE = False
             else:
                 print(f"发生错误：{e}")
+                DISK_SPACE = False
         except Exception as e:
             print(f"写入文件发生错误：{e}")
+            DISK_SPACE = False
 
     TOTAL_INDEX = file_index
     text ="Completed generating files"
