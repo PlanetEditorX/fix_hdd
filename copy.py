@@ -43,7 +43,9 @@ else:
         "BAD_TRACK_LIST_PATH": "none",
         "THREADING_SUM": "none",
         "TEMPLATE_PATH": "none",
-        "INIT": "false"
+        "INIT": "false",
+        "TOTAL_INDEX": "0",
+        "CHECK_INDEX": "0"
     }
     CURRENT_DIRECTORY = input(f"请输入磁盘挂载目录：")
 
@@ -56,7 +58,10 @@ LOG_PATH = f"{GETCWD}/badblocks.log"
 BAD_TRACK_LIST_PATH = f"{GETCWD}/badblocks.txt"
 # 模板位置
 TEMPLATE_PATH = f"{CURRENT_DIRECTORY}/.BADBLOCKS/0"
-
+# 最大文件序号
+MAX_INDEX = 0
+# 最大检测序号
+CHECK_INDEX = 0
 
 if config.getboolean('DEFAULT','INIT'):
     GET_CONFIG = input(f"获取到配置文件，是否从配置中读取(Y/n)：")
@@ -67,8 +72,10 @@ if config.getboolean('DEFAULT','INIT'):
         BAD_TRACK_LIST_PATH = config['DEFAULT']['BAD_TRACK_LIST_PATH']
         THREADING_SUM = int(config['DEFAULT']['THREADING_SUM'])
         TEMPLATE_PATH = config['DEFAULT']['TEMPLATE_PATH']
+        TOTAL_INDEX = int(config['DEFAULT']['TOTAL_INDEX'])
+        CHECK_INDEX = int(config['DEFAULT']['CHECK_INDEX'])
 
-CURRENT_DIRECTORY_INPUT = input(f"当前的磁盘挂载目录为：{CURRENT_DIRECTORY}, 生成文件填充路径为：{BADBLOCKS_PATH}, 日志位置为：{LOG_PATH}, 坏道列表位置为：{BAD_TRACK_LIST_PATH}, 线程数量为：{THREADING_SUM}, 模板文件位置为：{TEMPLATE_PATH}\r\n是否确认(Y/n): ")
+CURRENT_DIRECTORY_INPUT = input(f"当前的磁盘挂载目录为：{CURRENT_DIRECTORY}, 生成文件填充路径为：{BADBLOCKS_PATH}, 日志位置为：{LOG_PATH}, 坏道列表位置为：{BAD_TRACK_LIST_PATH}, 生成线程数量为：{THREADING_SUM}, 模板文件位置为：{TEMPLATE_PATH}\r\n是否确认(Y/n): ")
 while CURRENT_DIRECTORY_INPUT not in ['Y', 'y', ''] or CURRENT_DIRECTORY in ['/root', '/', '']:
     if  CURRENT_DIRECTORY in ['/root', '/', '']:
         CURRENT_DIRECTORY = input(f"磁盘挂载目录不能为'/root','/','', 请重新输入：") or CURRENT_DIRECTORY
@@ -78,11 +85,11 @@ while CURRENT_DIRECTORY_INPUT not in ['Y', 'y', ''] or CURRENT_DIRECTORY in ['/r
     BADBLOCKS_PATH = input(f"请输入生成文件填充路径（默认值：{BADBLOCKS_PATH}）：") or BADBLOCKS_PATH
     LOG_PATH = input(f"请输入日志位置（默认值：{LOG_PATH}）：") or LOG_PATH
     BAD_TRACK_LIST_PATH = input(f"请输入坏道列表位置（默认值：{BAD_TRACK_LIST_PATH}）：") or BAD_TRACK_LIST_PATH
-    THREADING_SUM = int(input(f"请输入线程数量（默认值：{THREADING_SUM}）：") or THREADING_SUM)
+    THREADING_SUM = int(input(f"请输入生成线程数量（默认值：{THREADING_SUM}）：") or THREADING_SUM)
     while THREADING_SUM < 1 or THREADING_SUM > 10:
-        THREADING_SUM = int(input(f"请重新输入线程数量（当前值：{THREADING_SUM}，范围：1-10）："))
+        THREADING_SUM = int(input(f"请重新输入生成线程数量（当前值：{THREADING_SUM}，范围：1-10）："))
     TEMPLATE_PATH = input(f"请输入模板文件位置（默认值：{TEMPLATE_PATH}）：") or TEMPLATE_PATH
-    CURRENT_DIRECTORY_INPUT = input(f"当前的磁盘挂载目录为：{CURRENT_DIRECTORY}, 生成文件填充路径为：{BADBLOCKS_PATH}, 日志位置为：{LOG_PATH}, 坏道列表位置为：{BAD_TRACK_LIST_PATH}, 线程数量为：{THREADING_SUM}, 模板文件位置为：{TEMPLATE_PATH}\r\n是否确认(Y/n): ")
+    CURRENT_DIRECTORY_INPUT = input(f"当前的磁盘挂载目录为：{CURRENT_DIRECTORY}, 生成文件填充路径为：{BADBLOCKS_PATH}, 日志位置为：{LOG_PATH}, 坏道列表位置为：{BAD_TRACK_LIST_PATH}, 生成线程数量为：{THREADING_SUM}, 模板文件位置为：{TEMPLATE_PATH}\r\n是否确认(Y/n): ")
 
 # 写入配置文件
 config['DEFAULT']['CURRENT_DIRECTORY'] = CURRENT_DIRECTORY
@@ -393,7 +400,11 @@ def create_4kb_files_until_full(output_dir):
             print(f"写入文件发生错误：{e}")
             DISK_SPACE = False
 
+    # 判断最大文件是否存在
+    while not os.path.isfile(os.path.join(output_dir, f"{file_index}")):
+        file_index -= 1
     TOTAL_INDEX = file_index
+    set_check_index('TOTAL_INDEX', file_index)
     text ="Completed generating files"
     logging.info(text)
 
@@ -425,11 +436,29 @@ def del_right_file(directory):
         print(f"'{directory}' 不存在!")
         sys.exit()
 
+def get_percent(numerator, denominator):
+    """
+    返回分数的值
+    :param numerator: 分子 (int)
+    :param denominator: 分母 (int)
+    :return: 分数的值 (str)
+    """
+    NUMERATOR = int(numerator)
+    DENOMINATOR = int(denominator)
+    if not DENOMINATOR:
+        return "0.00%"
+    return f"{((NUMERATOR / DENOMINATOR) * 100):.2f}%"
+
+def set_check_index(key, index):
+    config['DEFAULT'][key] = str(index)
+    with open("config.ini", "w") as configfile:
+        config.write(configfile)
+
 def check_files(directory):
     """
     遍历指定目录中的所有文件验证文件内容是否全部为数字 '1'。
     """
-    global BAD_TRACK_LIST,FILE_SIZE
+    global BAD_TRACK_LIST,FILE_SIZE,TOTAL_INDEX
     if not os.path.exists(directory):
         print(f"目录不存在：{directory}")
         return
@@ -437,9 +466,12 @@ def check_files(directory):
     if not os.path.isdir(directory):
         print(f"路径不是一个目录：{directory}")
         return
-
+    print(f"当前文件总数为：{TOTAL_INDEX}")
+    print(f"当前文件已检测序号为：{CHECK_INDEX}")
     # 遍历目录中的所有文件
     for filename in os.listdir(directory):
+        if int(filename) <= CHECK_INDEX:
+            continue
         file_path = os.path.join(directory, filename)
 
         # 检查文件
@@ -449,10 +481,15 @@ def check_files(directory):
                 with open(file_path, 'r', encoding='utf-8') as file:
                     content = file.read()
                     if not content or not is_file_all_ones(file_path):
-                        print(f"文件检测：{file_path} ERROR", end="\r")
+                        text = f"文件检测：{file_path} ERROR 总进度: {get_percent(filename, TOTAL_INDEX)}"
+                        print(text, end="\r")
+                        logging.info(text)
                         raise ValueError(f"文件内容不正确：{file_path}")
                     else:
-                        print(f"文件检测：{file_path} OK", end="\r")
+                        text = f"文件检测：{file_path} OK 总进度: {get_percent(filename, TOTAL_INDEX)}"
+                        print(text, end="\r")
+                        logging.info(text)
+                    set_check_index('CHECK_INDEX', filename)
             except Exception as e:
                 print(f"读取文件时发生错误：{file_path}，错误信息：{e}")
                 surrounding_paths = get_surrounding_paths(directory, Path(file_path).name)
