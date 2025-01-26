@@ -460,6 +460,9 @@ def check_files(directory):
                         text = f"文件检测：{file_path} OK 总进度: {get_percent(filename, TOTAL_INDEX)}"
                         print(text, end="\r")
                         logging.info(text)
+                    # 每过100存储依次检测序号
+                    if int(filename) % 100 == 0:
+                        set_check_index('CHECK_INDEX', filename)
             except KeyboardInterrupt:
                 print("\n检测到 Ctrl+C，正在退出程序...")
                 print(f"正在写入当前检测文件序号{filename}...")
