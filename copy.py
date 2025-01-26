@@ -379,13 +379,13 @@ def create_4kb_files_until_full(output_dir):
 
         except OSError as e:
             if e.errno == 28:  # errno.ENOSPC: No space left on device
-                text = "错误：磁盘空间不足，无法完成写入操作。"
-                print(text)
-                logging.info(text)
                 total, used, free = get_disk_space(disk_path)
                 if FILE_SIZE < free:
                     raise OSError("错误：磁盘IO异常，请手动重启服务器或插拔磁盘")
                 DISK_SPACE = False
+                text = f"提示：磁盘空间剩余可用空间小于最低模板大小，保留空间{DECIMAL_CONVERSION(free)}"
+                print(text)
+                logging.info(text)
             else:
                 print(f"发生错误：{e}")
                 DISK_SPACE = False
@@ -395,7 +395,6 @@ def create_4kb_files_until_full(output_dir):
 
     TOTAL_INDEX = file_index
     text ="Completed generating files"
-    print(text)
     logging.info(text)
 
 def del_right_file(directory):
