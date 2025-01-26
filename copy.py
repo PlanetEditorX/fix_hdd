@@ -407,34 +407,6 @@ def create_4kb_files_until_full(output_dir):
     text ="Completed generating files"
     logging.info(text)
 
-def del_right_file(directory):
-    """
-    遍历指定目录中的所有文件，删除正常的扇区占用文件
-    """
-    global BAD_TRACK_LIST
-    # 地址去重
-    BAD_TRACK_LIST = list(set(BAD_TRACK_LIST))
-    if os.path.isfile(BAD_TRACK_LIST_PATH):
-        temp_list = []
-        # 打开文件并逐行读取
-        with open("BAD_TRACK_LIST_PATH", "r", encoding="utf-8") as file:
-            for line in file:
-                temp_list.append(line.strip())
-        BAD_TRACK_LIST = list(set(BAD_TRACK_LIST.extend(temp_list)))
-    # 遍历目录中的所有文件
-    if os.path.isdir(directory):
-        for filename in os.listdir(directory):
-            file_path = os.path.join(directory, filename)
-            # 检查文件
-            if os.path.isfile(file_path):
-                if not file_path in BAD_TRACK_LIST:
-                    os.remove(file_path)
-                    print(f"删除正常文件：{file_path}", end="\r")
-                    logging.info(f"os.remove({file_path})")
-    else:
-        print(f"'{directory}' 不存在!")
-        sys.exit()
-
 def get_percent(numerator, denominator):
     """
     返回分数的值
@@ -498,7 +470,41 @@ def check_files(directory):
                 surrounding_paths = get_surrounding_paths(directory, Path(file_path).name)
                 BAD_TRACK_LIST.extend(surrounding_paths)
                 print(f"新增错误列表：{surrounding_paths}")
+                # 使用集合去重
+                unique_data = set(BAD_TRACK_LIST)
+                # 将去重后的数据写入文件
+                with open(BAD_TRACK_LIST_PATH, "w", encoding="utf-8") as file:
+                    for item in sorted(unique_data):  # 对数据排序后再写入
+                        file.write(item + "\n")
     set_check_index('CHECK_INDEX', filename)
+
+def del_right_file(directory):
+    """
+    遍历指定目录中的所有文件，删除正常的扇区占用文件
+    """
+    global BAD_TRACK_LIST
+    # 地址去重
+    BAD_TRACK_LIST = list(set(BAD_TRACK_LIST))
+    if os.path.isfile(BAD_TRACK_LIST_PATH):
+        temp_list = []
+        # 打开文件并逐行读取
+        with open("BAD_TRACK_LIST_PATH", "r", encoding="utf-8") as file:
+            for line in file:
+                temp_list.append(line.strip())
+        BAD_TRACK_LIST = list(set(BAD_TRACK_LIST.extend(temp_list)))
+    # 遍历目录中的所有文件
+    if os.path.isdir(directory):
+        for filename in os.listdir(directory):
+            file_path = os.path.join(directory, filename)
+            # 检查文件
+            if os.path.isfile(file_path):
+                if not file_path in BAD_TRACK_LIST:
+                    os.remove(file_path)
+                    print(f"删除正常文件：{file_path}", end="\r")
+                    logging.info(f"os.remove({file_path})")
+    else:
+        print(f"'{directory}' 不存在!")
+        sys.exit()
 
 if IS_CREATE:
     text = "=================================生成填充文件================================="
