@@ -75,21 +75,21 @@ if config.getboolean('DEFAULT','INIT'):
         TOTAL_INDEX = int(config['DEFAULT']['TOTAL_INDEX'])
         CHECK_INDEX = int(config['DEFAULT']['CHECK_INDEX'])
 
-CURRENT_DIRECTORY_INPUT = input(f"当前的磁盘挂载目录为：{CURRENT_DIRECTORY}, 生成文件填充路径为：{BADBLOCKS_PATH}, 日志位置为：{LOG_PATH}, 坏道列表位置为：{BAD_TRACK_LIST_PATH}, 生成线程数量为：{THREADING_SUM}, 模板文件位置为：{TEMPLATE_PATH}\r\n是否确认(Y/n): ")
+CURRENT_DIRECTORY_INPUT = input(f"当前的磁盘挂载目录为：{CURRENT_DIRECTORY}, 生成文件路径为：{BADBLOCKS_PATH}, 生成线程数量为：{THREADING_SUM}, 日志位置为：{LOG_PATH}, 坏道列表位置为：{BAD_TRACK_LIST_PATH}, 模板文件位置为：{TEMPLATE_PATH}\r\n是否确认(Y/n): ")
 while CURRENT_DIRECTORY_INPUT not in ['Y', 'y', ''] or CURRENT_DIRECTORY in ['/root', '/', '']:
     if  CURRENT_DIRECTORY in ['/root', '/', '']:
         CURRENT_DIRECTORY = input(f"磁盘挂载目录不能为'/root','/','', 请重新输入：") or CURRENT_DIRECTORY
     else:
         CURRENT_DIRECTORY = input(f"请输入磁盘挂载目录（默认值：{CURRENT_DIRECTORY}）：") or CURRENT_DIRECTORY
     BADBLOCKS_PATH = f"{CURRENT_DIRECTORY}/.BADBLOCKS"
-    BADBLOCKS_PATH = input(f"请输入生成文件填充路径（默认值：{BADBLOCKS_PATH}）：") or BADBLOCKS_PATH
+    BADBLOCKS_PATH = input(f"请输入生成文件路径（默认值：{BADBLOCKS_PATH}）：") or BADBLOCKS_PATH
     LOG_PATH = input(f"请输入日志位置（默认值：{LOG_PATH}）：") or LOG_PATH
     BAD_TRACK_LIST_PATH = input(f"请输入坏道列表位置（默认值：{BAD_TRACK_LIST_PATH}）：") or BAD_TRACK_LIST_PATH
     THREADING_SUM = int(input(f"请输入生成线程数量（默认值：{THREADING_SUM}）：") or THREADING_SUM)
     while THREADING_SUM < 1 or THREADING_SUM > 10:
         THREADING_SUM = int(input(f"请重新输入生成线程数量（当前值：{THREADING_SUM}，范围：1-10）："))
     TEMPLATE_PATH = input(f"请输入模板文件位置（默认值：{TEMPLATE_PATH}）：") or TEMPLATE_PATH
-    CURRENT_DIRECTORY_INPUT = input(f"当前的磁盘挂载目录为：{CURRENT_DIRECTORY}, 生成文件填充路径为：{BADBLOCKS_PATH}, 日志位置为：{LOG_PATH}, 坏道列表位置为：{BAD_TRACK_LIST_PATH}, 生成线程数量为：{THREADING_SUM}, 模板文件位置为：{TEMPLATE_PATH}\r\n是否确认(Y/n): ")
+    CURRENT_DIRECTORY_INPUT = input(f"当前的磁盘挂载目录为：{CURRENT_DIRECTORY}, 生成文件路径为：{BADBLOCKS_PATH}, 生成线程数量为：{THREADING_SUM}, 日志位置为：{LOG_PATH}, 坏道列表位置为：{BAD_TRACK_LIST_PATH}, 模板文件位置为：{TEMPLATE_PATH}\r\n是否确认(Y/n): ")
 
 # 写入配置文件
 config['DEFAULT']['CURRENT_DIRECTORY'] = CURRENT_DIRECTORY
@@ -164,7 +164,6 @@ total, used, free = get_disk_space(CURRENT_DIRECTORY)
 print(f"总空间：{DECIMAL_CONVERSION(total)}")
 print(f"已用空间：{DECIMAL_CONVERSION(used)}")
 print(f"剩余空间：{DECIMAL_CONVERSION(free)}")
-print("注：以上数据仅为初次读取的数据大小")
 print("==============================================================================")
 
 def get_files_sorted(directory):
@@ -300,7 +299,7 @@ def create_4kb_files_until_full(output_dir):
     # 获取最大文件名
     largest_file = get_largest_file(output_dir)
     if largest_file:
-        text = f"读取到当前目录下存在的最大文件名：{largest_file} OK"
+        text = f"读取到生成文件路径'{BADBLOCKS_PATH}'中存在的最大文件名：{largest_file} OK"
         print(text)
         logging.info(text)
         file_index = max(0, int(largest_file)-10)
@@ -466,8 +465,8 @@ def check_files(directory):
     if not os.path.isdir(directory):
         print(f"路径不是一个目录：{directory}")
         return
-    print(f"当前文件总数为：{TOTAL_INDEX}")
-    print(f"当前文件已检测序号为：{CHECK_INDEX}")
+    print(f"读取到生成文件路径'{BADBLOCKS_PATH}'中填充文件总数为：{TOTAL_INDEX}")
+    print(f"读取到生成文件路径'{BADBLOCKS_PATH}'中填充文件已检测：{CHECK_INDEX}")
     # 遍历目录中的所有文件
     for filename in os.listdir(directory):
         if int(filename) <= CHECK_INDEX:
@@ -489,12 +488,17 @@ def check_files(directory):
                         text = f"文件检测：{file_path} OK 总进度: {get_percent(filename, TOTAL_INDEX)}"
                         print(text, end="\r")
                         logging.info(text)
-                    set_check_index('CHECK_INDEX', filename)
+            except KeyboardInterrupt:
+                print("\n检测到 Ctrl+C，正在退出程序...")
+                print(f"正在写入当前检测文件序号{filename}...")
+                set_check_index('CHECK_INDEX', filename)
+                sys.exit()
             except Exception as e:
                 print(f"读取文件时发生错误：{file_path}，错误信息：{e}")
                 surrounding_paths = get_surrounding_paths(directory, Path(file_path).name)
                 BAD_TRACK_LIST.extend(surrounding_paths)
                 print(f"新增错误列表：{surrounding_paths}")
+    set_check_index('CHECK_INDEX', filename)
 
 if IS_CREATE:
     text = "=================================生成填充文件================================="
